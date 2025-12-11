@@ -288,6 +288,11 @@ void PM_PlayStepSound(int step, float fvol)
 	int irand;
 	Vector hvel;
 
+	//added by harSens:when we're flying, don't play stepsound
+	if (pmove->gravity < 0.1)
+		return;
+	//end of harSens add
+
 	pmove->iStepLeft = 0 != pmove->iStepLeft ? 0 : 1;
 
 	if (0 == pmove->runfuncs)
@@ -591,7 +596,9 @@ void PM_UpdateStepSound()
 	speed = Length(pmove->velocity);
 
 	// determine if we are on a ladder
-	const bool fLadder = (pmove->movetype == MOVETYPE_FLY); // IsOnLadder();
+	//harSens: removed ladders
+	//const bool fLadder = (pmove->movetype == MOVETYPE_FLY); // IsOnLadder();
+	const bool fLadder = false;
 
 	// UNDONE: need defined numbers for run, walk, crouch, crouch run velocities!!!!
 	if ((pmove->flags & FL_DUCKING) != 0 || fLadder)
@@ -1473,6 +1480,98 @@ void PM_WaterMove()
 	PM_FlyMove();
 }
 
+/*
+===================
+PM_PlayerFlyMove
+//added by harSens
+===================
+*/
+void PM_PlayerFlyMove (void)
+{
+	int		i;
+	Vector	wishvel;
+	float	wishspeed;
+	Vector	wishdir;
+	Vector	start, dest;
+	Vector  temp;
+	pmtrace_t	trace;
+
+	float speed, newspeed, addspeed, accelspeed;
+
+	//
+	// user intentions
+	//
+	for (i = 0; i < 3; i++)
+		wishvel[i] = pmove->forward[i] * pmove->cmd.forwardmove + pmove->right[i] * pmove->cmd.sidemove;
+
+	// Sinking after no other movement occurs
+	if (!pmove->cmd.forwardmove && !pmove->cmd.sidemove && !pmove->cmd.upmove)
+		wishvel[2] -= 1;		// drift towards bottom
+	else  // Go straight up by upmove amount.
+		wishvel[2] += pmove->cmd.upmove;
+
+	// Copy it over and determine speed
+	VectorCopy(wishvel, wishdir);
+	wishspeed = VectorNormalize(wishdir);
+
+	// Cap speed.
+	if (wishspeed > pmove->maxspeed)
+	{
+		VectorScale(wishvel, pmove->maxspeed / wishspeed, wishvel);
+		wishspeed = pmove->maxspeed;
+	}
+
+	VectorAdd (pmove->velocity, pmove->basevelocity, pmove->velocity);
+	// Air friction
+	VectorCopy(pmove->velocity, temp);
+	speed = VectorNormalize(temp);
+	if (speed)
+	{
+		newspeed = speed - pmove->frametime * speed * pmove->movevars->friction * pmove->friction;
+
+		if (newspeed < 0)
+			newspeed = 0;
+		VectorScale(pmove->velocity, newspeed / speed, pmove->velocity);
+	}
+	else
+		newspeed = 0;
+
+	//
+	// Air acceleration
+	//
+	if (wishspeed < 0.1f)
+		return;
+
+	addspeed = wishspeed - newspeed;
+	if (addspeed > 0)
+	{
+		VectorNormalize(wishvel);
+		accelspeed = pmove->movevars->accelerate * wishspeed * pmove->frametime * pmove->friction;
+		if (accelspeed > addspeed)
+			accelspeed = addspeed;
+
+		for (i = 0; i < 3; i++)
+			pmove->velocity[i] += accelspeed * wishvel[i];
+	}
+
+	// Now move
+	// assume it is a stair or a slope, so press down from stepheight above
+	VectorMA(pmove->origin, pmove->frametime, pmove->velocity, dest);
+	VectorCopy(dest, start);
+	start[2] += pmove->movevars->stepsize + 1;
+	trace = pmove->PM_PlayerTrace(start, dest, PM_NORMAL, -1);
+	if (!trace.startsolid && !trace.allsolid)	// FIXME: check steep slope?
+	{
+		// walked up the step, so just keep result and exit
+		VectorCopy(trace.endpos, pmove->origin);
+		return;
+	}
+
+	// Try moving straight along out normal path.
+	PM_FlyMove();
+}
+//end harSens add
+
 
 /*
 ===================
@@ -2065,8 +2164,19 @@ void PM_Duck()
 	bool duckchange = (buttonsChanged & IN_DUCK) != 0;
 	bool duckpressed = (nButtonPressed & IN_DUCK) != 0;
 
+	//added by harSens: don't duck when this is set and not on da ground
+	if (0 != pmove->stop_duck_jump && (pmove->onground == -1))
+		return;
+
 	if ((pmove->cmd.buttons & IN_DUCK) != 0)
 	{
+		//harSens add:don't duck in flight
+		if (pmove->gravity < 0.1)
+		{
+			pmove->velocity[2] = -200;
+			return;
+		}
+		//end harSens add
 		pmove->oldbuttons |= IN_DUCK;
 	}
 	else
@@ -2564,6 +2674,10 @@ void PM_Jump()
 {
 	int i;
 
+	//added by harSens: don't jump when this is set
+	if (0 != pmove->stop_duck_jump)
+		return;
+
 	if (0 != pmove->dead)
 	{
 		pmove->oldbuttons |= IN_JUMP; // don't jump again until released
@@ -2589,6 +2703,15 @@ void PM_Jump()
 		}
 		return;
 	}
+
+	//added by harSens: we're flying
+	if (pmove->gravity < 0.1)
+	{
+		pmove->onground = -1;// flying, not jumping
+		pmove->velocity[2] = 200;
+		return;
+	}
+	//end harSens add
 
 	// If we are in the water most of the way...
 	if (pmove->waterlevel >= 2)
@@ -2667,8 +2790,13 @@ void PM_Jump()
 	{
 		// Adjust for super long jump module
 		// UNDONE -- note this should be based on forward angles, not current velocity.
+		/* modified by harSens
 		if (cansuperjump &&
 			(pmove->cmd.buttons & IN_DUCK) != 0 &&
+			(pmove->flDuckTime > 0) &&
+			Length(pmove->velocity) > 50)
+		*/
+		if ((pmove->cmd.buttons & IN_DUCK) != 0 &&
 			(pmove->flDuckTime > 0) &&
 			Length(pmove->velocity) > 50)
 		{
@@ -2679,16 +2807,25 @@ void PM_Jump()
 				pmove->velocity[i] = pmove->forward[i] * PLAYER_LONGJUMP_SPEED * 1.6;
 			}
 
+			/* modified by harSens
 			pmove->velocity[2] = sqrt(2 * 800 * 56.0);
+			*/
+			pmove->velocity[2] = sqrt(2 * 800 * 1000.0);
 		}
 		else
 		{
+			/* modified by harSens
 			pmove->velocity[2] = sqrt(2 * 800 * 45.0);
+			*/
+			pmove->velocity[2] = sqrt(2 * 800 * 1500.0);
 		}
 	}
 	else
 	{
+		/* modified by harSens
 		pmove->velocity[2] = sqrt(2 * 800 * 45.0);
+		*/
+		pmove->velocity[2] = sqrt(2 * 800 * 500.0);
 	}
 
 	// Decay it for simulation
@@ -3117,8 +3254,13 @@ void PM_PlayerMove(qboolean server)
 		{
 			PM_LadderMove(pLadder);
 		}
+		/* modified by harSens
 		else if (pmove->movetype != MOVETYPE_WALK &&
 				 pmove->movetype != MOVETYPE_NOCLIP)
+		*/
+		else if (pmove->movetype != MOVETYPE_WALK &&
+				 pmove->movetype != MOVETYPE_NOCLIP &&
+				 pmove->movetype != MOVETYPE_FLY)
 		{
 			// Clear ladder stuff unless player is noclipping
 			//  it will be set immediately again next frame if necessary
@@ -3154,7 +3296,9 @@ void PM_PlayerMove(qboolean server)
 		// Also, set MOVE_TYPE to walk, too.
 		if ((pmove->cmd.buttons & IN_JUMP) != 0)
 		{
+			/*disabled by harSens
 			if (!pLadder)
+			*/
 			{
 				PM_Jump();
 			}
@@ -3166,7 +3310,16 @@ void PM_PlayerMove(qboolean server)
 
 		// Perform the move accounting for any base velocity.
 		VectorAdd(pmove->velocity, pmove->basevelocity, pmove->velocity);
+
+		/* modified by harSens
 		PM_FlyMove();
+		*/
+		if (pmove->gravity < 0.1)
+			PM_PlayerFlyMove();
+		else
+			PM_FlyMove();
+		//end harSens
+
 		VectorSubtract(pmove->velocity, pmove->basevelocity, pmove->velocity);
 		break;
 

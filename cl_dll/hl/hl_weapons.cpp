@@ -50,6 +50,7 @@ bool g_irunninggausspred = false;
 Vector previousorigin;
 
 // HLDM Weapon placeholder entities.
+/*disabled by harSens
 CGlock g_Glock;
 CCrowbar g_Crowbar;
 CPython g_Python;
@@ -64,6 +65,7 @@ CHandGrenade g_HandGren;
 CSatchel g_Satchel;
 CTripmine g_Tripmine;
 CSqueak g_Snark;
+*/
 
 
 /*
@@ -450,6 +452,7 @@ void HUD_InitClientWeapons()
 	HUD_PrepEntity(&player, NULL);
 
 	// Allocate slot(s) for each weapon that we are going to be predicting
+	/*disabled by harSens
 	HUD_PrepEntity(&g_Glock, &player);
 	HUD_PrepEntity(&g_Crowbar, &player);
 	HUD_PrepEntity(&g_Python, &player);
@@ -464,6 +467,7 @@ void HUD_InitClientWeapons()
 	HUD_PrepEntity(&g_Satchel, &player);
 	HUD_PrepEntity(&g_Tripmine, &player);
 	HUD_PrepEntity(&g_Snark, &player);
+	*/
 }
 
 /*
@@ -529,6 +533,7 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 
 	// Fill in data based on selected weapon
 	// FIXME, make this a method in each weapon?  where you pass in an entity_state_t *?
+	/*disabled by harSens
 	switch (from->client.m_iId)
 	{
 	case WEAPON_CROWBAR:
@@ -587,6 +592,7 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 		pWeapon = &g_Snark;
 		break;
 	}
+	*/
 
 	// Store pointer to our destination entity_state_t so we can get our origin, etc. from it
 	//  for setting up events on the client
@@ -695,11 +701,13 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 		player.m_pActiveItem = g_pWpns[from->client.m_iId];
 	}
 
+	/*disabled by harSens
 	if (player.m_pActiveItem->m_iId == WEAPON_RPG)
 	{
 		((CRpg*)player.m_pActiveItem)->m_fSpotActive = static_cast<bool>(from->client.vuser2[1]);
 		((CRpg*)player.m_pActiveItem)->m_cActiveRockets = (int)from->client.vuser2[2];
 	}
+	*/
 
 	// Don't go firing anything if we have died or are spectating
 	// Or if we don't have a weapon model deployed
@@ -752,6 +760,7 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 	to->client.fuser3 = player.m_flAmmoStartCharge;
 	to->client.maxspeed = player.pev->maxspeed;
 
+	/*disabled by harSens
 	//HL Weapons
 	to->client.vuser1[0] = player.ammo_9mm;
 	to->client.vuser1[1] = player.ammo_357;
@@ -768,13 +777,15 @@ void HUD_WeaponsPostThink(local_state_s* from, local_state_s* to, usercmd_t* cmd
 		to->client.vuser2[1] = static_cast<float>(((CRpg*)player.m_pActiveItem)->m_fSpotActive);
 		to->client.vuser2[2] = ((CRpg*)player.m_pActiveItem)->m_cActiveRockets;
 	}
+	*/
 
 	// Make sure that weapon animation matches what the game .dll is telling us
 	//  over the wire ( fixes some animation glitches )
 	if (g_runfuncs && (HUD_GetWeaponAnim() != to->client.weaponanim))
 	{
+		//disabled by harSens
 		//Make sure the 357 has the right body
-		g_Python.pev->body = bIsMultiplayer() ? 1 : 0;
+		//g_Python.pev->body = bIsMultiplayer() ? 1 : 0;
 
 		// Force a fixed anim down to viewmodel
 		HUD_SendWeaponAnim(to->client.weaponanim, pWeapon->pev->body, true);

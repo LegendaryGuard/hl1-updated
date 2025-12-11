@@ -239,9 +239,19 @@ void CHudSayText::SayTextPrint(const char* pszBuf, int iBufSize, int clientIndex
 	}
 
 	m_iFlags |= HUD_ACTIVE;
+	/*removed by harSens: this sound does not exists in esforces
 	PlaySound("misc/talk.wav", 1);
+	*/
 
+	/*modified by harSens
 	Y_START = ScreenHeight - 60 - (line_height * (MAX_LINES + 2));
+	*/
+	if (ScreenHeight >= 480)
+		Y_START = ScreenHeight - 140;
+	else
+		Y_START = ScreenHeight - 105;
+
+	Y_START -= (line_height * (MAX_LINES+1));
 }
 
 void CHudSayText::EnsureTextFitsInOneLineAndWrapIfHaveTo(int line)

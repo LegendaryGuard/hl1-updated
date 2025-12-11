@@ -68,15 +68,18 @@ target_sources(client PRIVATE
 	ammo.cpp
 	ammohistory.cpp
 	ammo_secondary.cpp
+	attackcharge.cpp	# ESF ALPHA 2.0
 	battery.cpp
 	cdll_int.cpp
 	com_weapons.cpp
+	credits.cpp	# ESF ALPHA 2.0
 	death.cpp
 	demo.cpp
 	entity.cpp
 	events.cpp
 	ev_common.cpp
 	ev_hldm.cpp
+	explosion.cpp	# ESF ALPHA 2.0
 	flashlight.cpp
 	GameStudioModelRenderer.cpp
 	geiger.cpp
@@ -92,12 +95,18 @@ target_sources(client PRIVATE
 	in_camera.cpp
 	menu.cpp
 	message.cpp
+	powerlevel.cpp	# ESF ALPHA 2.0
+	powerstruggle.cpp	# ESF ALPHA 2.0
 	saytext.cpp
+	sensubean.cpp	# ESF ALPHA 2.0
+	speed.cpp	# ESF ALPHA 2.0
+	spiritbombcharge.cpp	# ESF ALPHA 2.0
 	statusbar.cpp
 	status_icons.cpp
 	StudioModelRenderer.cpp
 	studio_util.cpp
 	text_message.cpp
+	trail.cpp	# ESF ALPHA 2.0
 	train.cpp
 	tri.cpp
 	util.cpp
@@ -126,21 +135,21 @@ target_sources(client PRIVATE
 	../common/mathlib.cpp
 	../common/parsemsg.cpp
 
-	../dlls/crossbow.cpp
-	../dlls/crowbar.cpp
-	../dlls/egon.cpp
-	../dlls/gauss.cpp
-	../dlls/handgrenade.cpp
-	../dlls/hornetgun.cpp
-	../dlls/mp5.cpp
-	../dlls/python.cpp
-	../dlls/rpg.cpp
-	../dlls/satchel.cpp
-	../dlls/shotgun.cpp
-	../dlls/squeakgrenade.cpp
-	../dlls/tripmine.cpp
+	# ../dlls/crossbow.cpp
+	# ../dlls/crowbar.cpp
+	# ../dlls/egon.cpp
+	# ../dlls/gauss.cpp
+	# ../dlls/handgrenade.cpp
+	# ../dlls/hornetgun.cpp
+	# ../dlls/mp5.cpp
+	# ../dlls/python.cpp
+	# ../dlls/rpg.cpp
+	# ../dlls/satchel.cpp
+	# ../dlls/shotgun.cpp
+	# ../dlls/squeakgrenade.cpp
+	# ../dlls/tripmine.cpp
 	../dlls/weapons_shared.cpp
-	../dlls/glock.cpp
+	# ../dlls/glock.cpp
 
 	../game_shared/filesystem_utils.cpp
 	../game_shared/vgui_checkbutton2.cpp
@@ -229,6 +238,7 @@ target_sources(client PRIVATE
 	../common/weaponinfo.h
 
 	../dlls/cdll_dll.h
+	../dlls/classes.h	# ESF ALPHA 2.0
 
 	../engine/APIProxy.h
 	../engine/cdll_int.h

@@ -372,6 +372,26 @@ void CHud::Init()
 	GetClientVoiceMgr()->Init(&g_VoiceStatusHelper, (vgui::Panel**)&gViewPort);
 
 	m_Menu.Init();
+	//harSens speed code
+	m_Speed.Init();
+	//harSens camera code
+	m_Camera.Init();
+	//harSens magic charger
+	m_Charge.Init();
+	//harSens powerlevel bar
+	m_PowerLevel.Init();
+	//harSens explosion trigger
+	m_Explosion.Init();
+	//harSens powerstruggle
+	m_PowerStruggle.Init();
+	//harSens credits playback
+	m_Credits.Init();
+	//harSens spirit bomb charger
+	m_ChargeSpiritBomb.Init();
+	//harSens sensubean gfx
+	m_SensuBean.Init();
+	//harSens trail code
+	m_Trail.Init();
 
 	MsgFunc_ResetHUD(0, 0, NULL);
 
@@ -523,6 +543,14 @@ void CHud::VidInit()
 	m_AmmoSecondary.VidInit();
 	m_TextMessage.VidInit();
 	m_StatusIcons.VidInit();
+	//added by harSens: powerlevel
+	m_PowerLevel.VidInit();
+	//harSens explosion vidinit
+	m_Explosion.VidInit();
+	//harSen spirit bomb charger vidinit
+	m_ChargeSpiritBomb.VidInit();
+	//harSens sensubean vidinit
+	m_SensuBean.VidInit();
 	GetClientVoiceMgr()->VidInit();
 }
 

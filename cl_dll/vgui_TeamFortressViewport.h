@@ -1050,6 +1050,7 @@ public:
 #define		DISGUISE_TEAM3		(1<<2)
 #define		DISGUISE_TEAM4		(1<<3)
 
+/*disabled by harSens
 class DisguiseButton : public CommandButton
 {
 private:
@@ -1075,7 +1076,9 @@ public:
 		return true;
 	}
 };
+*/
 
+/*disabled by harSens
 class DetpackButton : public CommandButton
 {
 private:
@@ -1095,6 +1098,7 @@ public:
 		return true;
 	}
 };
+*/
 
 extern int iBuildingCosts[];
 #define BUILDSTATE_HASBUILDING		(1<<0)		// Data is building ID (1 = Dispenser, 2 = Sentry, 3 = Entry Teleporter, 4 = Exit Teleporter)
@@ -1102,6 +1106,7 @@ extern int iBuildingCosts[];
 #define BUILDSTATE_BASE				(1<<2)
 #define BUILDSTATE_CANBUILD			(1<<3)		// Data is building ID (1 = Dispenser, 2 = Sentry, 3 = Entry Teleporter, 4 = Exit Teleporter)
 
+/*disabled by harSens
 class BuildButton : public CommandButton
 {
 private:
@@ -1128,6 +1133,7 @@ public:
 		return false;
 	}
 };
+*/
 
 #define MAX_MAPNAME 256
 

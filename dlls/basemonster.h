@@ -15,6 +15,8 @@
 
 #pragma once
 
+#include "cbase.h"
+
 //
 // generic Monster
 //

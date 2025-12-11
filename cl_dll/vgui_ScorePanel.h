@@ -14,6 +14,7 @@
 #include <VGUI_Label.h>
 #include <VGUI_TextImage.h>
 #include "../game_shared/vgui_listbox.h"
+#include "vgui_TeamFortressViewport.h"
 
 #include <ctype.h>
 

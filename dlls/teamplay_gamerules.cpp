@@ -24,6 +24,10 @@
 #include "teamplay_gamerules.h"
 #include "game.h"
 #include "UserMessages.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
 //TODO: these should be members of CHalfLifeTeamplay
 static char team_names[MAX_TEAMS][MAX_TEAMNAME_LENGTH];
@@ -171,6 +175,7 @@ void CHalfLifeTeamplay::UpdateGameMode(CBasePlayer* pPlayer)
 
 const char* CHalfLifeTeamplay::SetDefaultPlayerTeam(CBasePlayer* pPlayer)
 {
+	/*removed by harSens
 	// copy out the team name from the model
 	char* mdls = g_engfuncs.pfnInfoKeyValue(g_engfuncs.pfnGetInfoKeyBuffer(pPlayer->edict()), "model");
 	strncpy(pPlayer->m_szTeamName, mdls, TEAM_NAME_LENGTH);
@@ -194,6 +199,8 @@ const char* CHalfLifeTeamplay::SetDefaultPlayerTeam(CBasePlayer* pPlayer)
 	}
 
 	return pPlayer->m_szTeamName;
+	*/
+	return NULL;
 }
 
 
@@ -204,9 +211,11 @@ void CHalfLifeTeamplay::InitHUD(CBasePlayer* pPlayer)
 {
 	int i;
 
+	/*removed by harSens: choose a team
 	SetDefaultPlayerTeam(pPlayer);
-	CHalfLifeMultiplay::InitHUD(pPlayer);
+	*/
 
+	/*modified by harSens
 	// Send down the team names
 	MESSAGE_BEGIN(MSG_ONE, gmsgTeamNames, NULL, pPlayer->edict());
 	WRITE_BYTE(num_teams);
@@ -215,9 +224,24 @@ void CHalfLifeTeamplay::InitHUD(CBasePlayer* pPlayer)
 		WRITE_STRING(team_names[i]);
 	}
 	MESSAGE_END();
+	*/
+	//added by harSens: set team names
+	MESSAGE_BEGIN(MSG_ONE, gmsgTeamNames, NULL, pPlayer->edict());
+		WRITE_BYTE(2);					// 2 teams. (You can have up to 4.)
+		WRITE_STRING(TEAM1_NAME);		// team names
+		WRITE_STRING(TEAM2_NAME);
+	MESSAGE_END();
+
+	//added by harSens: show team menu
+	MESSAGE_BEGIN(MSG_ONE, gmsgVGUIMenu, NULL, pPlayer->pev);
+		WRITE_BYTE(2);	// This is the menu number that needs to be sent
+	MESSAGE_END();
+
+	CHalfLifeMultiplay::InitHUD(pPlayer);
 
 	RecountTeams();
 
+	/*removed by harSens: don't join a team yet	
 	char* mdls = g_engfuncs.pfnInfoKeyValue(g_engfuncs.pfnGetInfoKeyBuffer(pPlayer->edict()), "model");
 	// update the current player of the team he is joining
 	char text[1024];
@@ -234,12 +258,17 @@ void CHalfLifeTeamplay::InitHUD(CBasePlayer* pPlayer)
 	UTIL_SayText(text, pPlayer);
 	int clientIndex = pPlayer->entindex();
 	RecountTeams();
+	*/
+
 	// update this player with all the other players team info
 	// loop through all active players and send their team info to the new client
 	for (i = 1; i <= gpGlobals->maxClients; i++)
 	{
 		CBaseEntity* plr = UTIL_PlayerByIndex(i);
+		/*modified by harSens:IsValidTeam doesn't work :(
 		if (plr && IsValidTeam(plr->TeamID()))
+		*/
+		if (plr)
 		{
 			MESSAGE_BEGIN(MSG_ONE, gmsgTeamInfo, NULL, pPlayer->edict());
 			WRITE_BYTE(plr->entindex());
@@ -282,6 +311,13 @@ void CHalfLifeTeamplay::ChangePlayerTeam(CBasePlayer* pPlayer, const char* pTeam
 	g_engfuncs.pfnSetClientKeyValue(clientIndex, g_engfuncs.pfnGetInfoKeyBuffer(pPlayer->edict()), "model", pPlayer->m_szTeamName);
 	g_engfuncs.pfnSetClientKeyValue(clientIndex, g_engfuncs.pfnGetInfoKeyBuffer(pPlayer->edict()), "team", pPlayer->m_szTeamName);
 
+	//added by harSens: set proper skin for the player
+	if (!strcmp(pTeamName, TEAM2_NAME))
+		pPlayer->pev->skin = EVIL_SKIN;
+	else
+		pPlayer->pev->skin = GOOD_SKIN;
+
+
 	// notify everyone's HUD of the team change
 	MESSAGE_BEGIN(MSG_ALL, gmsgTeamInfo);
 	WRITE_BYTE(clientIndex);
@@ -303,6 +339,28 @@ void CHalfLifeTeamplay::ChangePlayerTeam(CBasePlayer* pPlayer, const char* pTeam
 //=========================================================
 void CHalfLifeTeamplay::ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobuffer)
 {
+	//added by harSens
+	// prevent skin/color/model changes
+	char *mdls = g_engfuncs.pfnInfoKeyValue(infobuffer, "model");
+	
+	//TEMPORARY!!! skip notdone model
+	if (!stricmp(mdls, "notdone"))
+		return;
+	
+	// skip base class
+	int class_nr = pPlayer->m_pClass->Classify();
+	if (class_nr < 0)
+		return;
+
+	char class_model[255];
+	strcpy(class_model, CBaseClass::GetName(class_nr));
+
+	// wrong model for current player?
+	if (stricmp(mdls, class_model)) //restore class_model
+		g_engfuncs.pfnSetClientKeyValue(pPlayer->entindex(), g_engfuncs.pfnGetInfoKeyBuffer(pPlayer->edict()), "model", class_model);
+	//end harSens add
+
+	/* disabled by harSens
 	char text[1024];
 
 	// prevent skin/color/model changes
@@ -347,6 +405,7 @@ void CHalfLifeTeamplay::ClientUserInfoChanged(CBasePlayer* pPlayer, char* infobu
 	ChangePlayerTeam(pPlayer, mdls, true, true);
 	// recound stuff
 	RecountTeams(true);
+	*/
 }
 
 //=========================================================
@@ -615,5 +674,54 @@ void CHalfLifeTeamplay::RecountTeams(bool bResendInfo)
 				}
 			}
 		}
+	}
+}
+
+
+//=========================================================
+// JoinTeam Function, made by Chip
+//=========================================================
+void CHalfLifeTeamplay::JoinTeam(CBasePlayer *pPlayer, const char *pTeamName)
+{
+	char text [1024]; 
+
+	//If already on this team, do nothing
+	if (FStrEq(pPlayer->m_szTeamName, pTeamName))
+		return;
+
+	//Join the team 
+
+	//When observer, make it respawnable, let it join a team and then respawn
+	if (pPlayer->m_afPhysicsFlags & PFLAG_OBSERVER)
+	{	//added by harSens: show class menu
+		MESSAGE_BEGIN(MSG_ONE, gmsgVGUIMenu, NULL, pPlayer->edict());
+			WRITE_BYTE(3);			//show class menu
+		MESSAGE_END();
+
+		// notify everyone of the team change
+		sprintf(text, "* %s has joined %s\n", STRING(pPlayer->pev->netname), pTeamName);
+		UTIL_SayText(text, pPlayer);
+		UTIL_LogPrintf("\"%s<%i>\" has joined %s\n", STRING(pPlayer->pev->netname), GETPLAYERUSERID(pPlayer->edict()), pTeamName);
+		
+		/* modified by harSens: not respawn here, respawn after class menu
+		pPlayer->pev->deadflag = DEAD_RESPAWNABLE;
+		*/
+		ChangePlayerTeam(pPlayer, pTeamName, false, false);
+		// recound stuff
+		RecountTeams();
+		/* modified by harSens: not respawn here, respawn after class menu
+		pPlayer->Spawn();
+		*/
+	}
+	//Else just switch teams
+	else
+	{
+		// notify everyone of the team change
+		sprintf(text, "* %s has joined %s\n", STRING(pPlayer->pev->netname), pTeamName);
+		UTIL_SayText(text, pPlayer);
+		UTIL_LogPrintf("\"%s<%i>\" has joined %s\n", STRING( pPlayer->pev->netname ), GETPLAYERUSERID(pPlayer->edict()), pTeamName);
+		ChangePlayerTeam(pPlayer, pTeamName, true, false);
+		// recound stuff
+		RecountTeams();
 	}
 }

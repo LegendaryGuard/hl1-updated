@@ -41,6 +41,10 @@
 #include "hltv.h"
 #include "UserMessages.h"
 #include "client.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
 // #define DUCKFIX
 
@@ -60,6 +64,11 @@ extern bool IsBustingGame();
 
 #define FLASH_DRAIN_TIME 1.2  //100 units/3 minutes
 #define FLASH_CHARGE_TIME 0.2 // 100 units/20 seconds  (seconds per unit)
+
+//added by harSens
+#define SOLARFLARE_BLIND_TIME	30
+#define POWERLEVEL_INCREASE		600
+#define KI_INCREASE				500
 
 // Global Savedata for player
 TYPEDESCRIPTION CBasePlayer::m_playerSaveData[] =
@@ -148,6 +157,73 @@ TYPEDESCRIPTION CBasePlayer::m_playerSaveData[] =
 
 LINK_ENTITY_TO_CLASS(player, CBasePlayer);
 
+/**
+* Bag containing dead players items (only sensubeans for now)
+* @version 25-9-2001
+* @author Herwin 'harSens' van Welbergen
+*/
+class CPlayerBag : public CBaseEntity
+{	
+public:
+	/**
+	* Precaches models
+	*/
+	void Precache() override;
+
+	/**
+	* Spawn the bag
+	*/
+	void Spawn() override;
+
+	/**
+	* touch function
+	* @param CBaseEntity *pOther: item that touches it
+	*/
+	void Touch(CBaseEntity *pOther) override;
+	
+	/**
+	* Creates a bag
+	*/
+	static CPlayerBag *CreateBag(int beans, CBasePlayer *pl);
+	int m_iSensuBeans;
+};
+
+void CPlayerBag::Precache()
+{
+	PRECACHE_MODEL("models/w_sensubeanbag.mdl");
+}
+
+void CPlayerBag::Spawn()
+{
+	Precache();
+	SET_MODEL(ENT(pev),"models/w_sensubeanbag.mdl");
+	pev->movetype = MOVETYPE_TOSS;
+	pev->solid = SOLID_TRIGGER;
+	UTIL_SetSize(pev, Vector(-16, -16, 0), Vector(16, 16, 16));	
+}
+
+void CPlayerBag::Touch(CBaseEntity *pOther)
+{
+	if (pOther->IsPlayer())
+	{
+		((CBasePlayer*)pOther)->GiveBean(m_iSensuBeans);
+		UTIL_Remove(this);
+	}
+}
+
+CPlayerBag *CPlayerBag::CreateBag(int beans, CBasePlayer *pl)
+{
+	CPlayerBag *pPlayerBag = GetClassPtr( (CPlayerBag *)NULL );
+	pPlayerBag->Spawn();
+	
+	pPlayerBag->pev->origin = pl->pev->origin;
+	UTIL_SetOrigin(pPlayerBag->pev,pPlayerBag->pev->origin);
+
+	pPlayerBag->pev->velocity = pl->pev->velocity;
+	pPlayerBag->m_iSensuBeans = beans;
+
+	return pPlayerBag;
+}
 
 
 void CBasePlayer::Pain()
@@ -248,6 +324,341 @@ int TrainSpeed(int iSpeed, int iMax)
 
 	return iRet;
 }
+
+//added by harSens
+void CBasePlayer::Teleport()
+{
+	if (!m_fObserverFlag && IsAlive() && !m_fControl && !m_fCharging && !m_fHoldDisc)
+	{
+		int ki_slot = GetAmmoIndex("ki");
+		if (m_rgAmmo[ki_slot] >= TELEPORT_KI_COST * m_iMaxKi)
+		{
+			m_rgAmmo[ki_slot] -= TELEPORT_KI_COST * m_iMaxKi;
+			
+			EMIT_SOUND(ENT(pev), CHAN_VOICE, "weapons/teleport.wav", 1, ATTN_NORM);
+
+			//teleport gfx
+			MESSAGE_BEGIN(MSG_PAS, SVC_TEMPENTITY, pev->origin);
+				WRITE_BYTE(TE_TELEPORT);
+				WRITE_COORD(pev->origin.x);
+				WRITE_COORD(pev->origin.y);
+				WRITE_COORD(pev->origin.z);				
+			MESSAGE_END();
+
+			Vector vecEnd = pev->origin + pev->velocity.Normalize() * 750;
+			TraceResult tr;
+			UTIL_TraceHull(pev->origin, vecEnd, dont_ignore_monsters, human_hull, ENT(pev), &tr);
+
+			UTIL_SetOrigin(pev,tr.vecEndPos);
+		}		
+	}
+}
+
+void CBasePlayer::StartFly()
+{
+	if (!m_fFlying && IsAlive() && !m_fObserverFlag)
+	{
+		if (m_fBlock)
+			StopBlock();
+
+		m_fFlying = true;
+		pev->gravity = 0.0000001;
+		pev->movetype = MOVETYPE_FLY;
+	}
+}
+
+void CBasePlayer::StopFly()
+{
+	if (m_fFlying && !m_fPowerUp)
+	{
+		m_fFlying = false;
+		if (m_pAura)
+			m_pAura->SetAnimation("idle");
+
+		pev->gravity = 1;
+		pev->movetype = MOVETYPE_WALK;
+	}
+}
+
+
+void CBasePlayer::StartTurbo( void )
+{
+	if (!m_fTurbo && !m_fObserverFlag && IsAlive() && !m_fCharging && !m_fHoldDisc)
+	{
+		m_fTurbo = true;
+		if (!m_pAura)
+			m_pAura = CAura::Create(this);
+	}
+}
+
+void CBasePlayer::StopTurbo( void )
+{
+	if (m_fTurbo)
+	{
+		m_fTurbo = false;
+		if (m_pAura && !m_fPowerUp)
+		{
+			m_pAura->Destroy();
+			m_pAura = NULL;
+		}
+	}
+}
+
+void CBasePlayer::StartObserving( void ) 
+{
+	if (m_fObserverFlag)
+		return;
+
+	//unblind player
+	if (m_fBlinded)
+		UTIL_ScreenFade( this, Vector (255,255,255), 0, 0, 255, FFADE_IN );	
+
+	//disable special modes
+	if (m_fPowerUp)
+		StopPowerUp();
+
+	if (m_fBlock)
+		StopBlock();
+
+	if (m_fFlying)
+		StopFly();
+
+	if (m_fTurbo)
+		StopTurbo();		
+
+	m_fObserverFlag = true;
+	pev->effects |= EF_NODRAW;
+
+	EnableControl(false);
+
+	RemoveAllItems( true );
+
+	//set 1st person camera
+	MESSAGE_BEGIN( MSG_ONE, gmsgChangeView, NULL, pev ); 
+		WRITE_BYTE( 1 );	//1st person
+		WRITE_BYTE( 1 );	//lock camera
+	MESSAGE_END(); 
+
+
+	edict_t *pSpot, *pNewSpot;
+	int iRand;
+
+	pSpot = FIND_ENTITY_BY_CLASSNAME( NULL, "info_intermission"); 
+	if ( !FNullEnt( pSpot ) )
+	{
+		// at least one intermission spot in the world.
+		iRand = RANDOM_LONG( 0, 3 );
+		while ( iRand > 0 )
+		{
+			pNewSpot = FIND_ENTITY_BY_CLASSNAME( pSpot, "info_intermission");
+			if ( pNewSpot )
+				pSpot = pNewSpot;
+			iRand--;
+		}
+		StartObserver( pSpot->v.origin, pSpot->v.v_angle );
+	}
+	else
+	{
+		// no intermission spot. Push them up in the air, looking down at their corpse
+		TraceResult tr;
+		UTIL_TraceLine( pev->origin, pev->origin + Vector( 0, 0, 128 ), ignore_monsters, edict(), &tr );
+		StartObserver( tr.vecEndPos, UTIL_VecToAngles( tr.vecEndPos - pev->origin ) );
+	}
+}
+
+void CBasePlayer::StopObserving( void ) 
+{
+	if (!m_fObserverFlag)
+		return;
+
+	//set 3rd person camera
+	MESSAGE_BEGIN( MSG_ONE, gmsgChangeView, NULL, pev ); 
+		WRITE_BYTE( 3 );	//3rd person
+		WRITE_BYTE( 0 );	//unlock camera
+	MESSAGE_END(); 
+
+	EnableControl(true);
+	pev->effects &= ~EF_NODRAW;
+	m_fObserverFlag = false; 
+
+	pev->button = 0;
+	m_flRespawnTimer = 0;
+
+	respawn(pev, false );
+	pev->nextthink = -1;
+}
+
+//added by harSens
+extern float g_flWeaponCheat;
+
+bool CBasePlayer::ChangeClass(const char *pClassName)
+{
+	int previous_class = m_pClass->Classify();
+	if (FStrEq(pClassName, "goku"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CGoku(this);
+	}
+	else if (FStrEq(pClassName, "piccolo"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CPiccolo(this);
+	}
+	else if (FStrEq(pClassName, "krillin"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CKrillin(this);
+	}
+	else if (FStrEq(pClassName, "vegeta"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CVegeta(this);
+	}
+	else if (FStrEq(pClassName, "trunks"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CTrunks(this);
+	}
+	else if (FStrEq(pClassName, "frieza"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CFrieza(this);
+	}
+	else if (FStrEq(pClassName, "cell"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CCell(this);
+	}
+	else if (FStrEq(pClassName, "buu"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CBuu(this);
+	}
+	else if (FStrEq(pClassName, "gohan"))
+	{
+		m_fRandomClass = false;
+		delete m_pClass;
+		m_pClass = new CGohan(this);
+	}
+	else if (FStrEq(pClassName, "randompc"))
+	{
+		m_fRandomClass = true;
+		ChangeClass(CBaseClass::GetName(RANDOM_LONG(1,PC_LAST-1)));
+	}
+	else
+	{
+		return false;
+	}
+	
+	m_iMaxPowerLevel = m_pClass->GetStartPowerLevel();
+	m_iMaxKi = m_pClass->GetStartKi();
+	m_iMaxHealth = m_pClass->GetStartHealth();
+	m_iMaxSpeed = m_pClass->GetStartSpeed();
+	
+	// HACK HACK: into observing if not already in, 
+	// to prevent cheaters using console commands to change classes
+	if (!m_fObserverFlag && IsAlive())
+		StartObserving();
+
+	// one frag penalty for changing class, except when dead
+	if (previous_class != PC_BASE)
+	{
+		if (IsAlive())
+			g_pGameRules->PlayerKilled( this, pev, pev );
+	}
+	StopObserving();
+	return true;
+}
+
+void CBasePlayer::StartBlock( void )
+{
+	if (!m_fBlock && !m_fCharging && !m_fControl && !m_fObserverFlag && IsAlive() && !m_fHoldDisc)
+	{
+		if (m_fPowerUp)
+			StopPowerUp();
+
+		m_flSlowDown = 0.0;
+		m_fBlock = true;
+		CBasePlayer::SetAnimation(PLAYER_BLOCK);				
+	}
+}
+
+void CBasePlayer::StopBlock( void )
+{
+	if (m_fBlock)
+	{
+		m_flSlowDown = 1.0;
+		m_fBlock = false;
+	}
+}
+
+
+void CBasePlayer::StartPowerUp( void )
+{
+	if (!m_fPowerUp && !m_fCharging && !m_fControl && IsAlive() && !m_fObserverFlag && !m_fHoldDisc)
+	{
+		if (m_fBlock)
+			StopBlock();
+
+		//stay in the air, if falling down
+		if (!(pev->flags & FL_ONGROUND))
+		{
+			if (!m_fFlying)
+				StartFly();
+		}
+		m_flSlowDown = 0.0;
+		m_fPowerUp = true;
+		CBasePlayer::SetAnimation(PLAYER_POWERUP);
+		if (!m_pAura)
+			m_pAura = CAura::Create(this);
+	}
+}
+
+void CBasePlayer::StopPowerUp( void )
+{
+	if (m_fPowerUp)
+	{
+		m_flSlowDown = 1.0;
+		m_fPowerUp = false;
+		if (m_pAura && !m_fTurbo)
+		{
+			m_pAura->Destroy();
+			m_pAura = NULL;
+		}
+	}
+}
+
+void CBasePlayer::IncreaseStrength(CBasePlayer *pVictim, int damage)
+{
+	// don't gain exp for hurting yourself :)
+	if (pVictim == this)
+		return;
+
+	float flPlIncrease = (float)pVictim->m_iMaxPowerLevel / (float)m_iMaxPowerLevel;
+	flPlIncrease *= flPlIncrease;
+	flPlIncrease *= POWERLEVEL_INCREASE * damage;
+	m_iMaxPowerLevel += flPlIncrease;
+	m_iPowerLevel += flPlIncrease;
+
+	float flKiIncrease = (float)pVictim->m_iMaxKi / (float)m_iMaxKi;
+	flKiIncrease *= flKiIncrease * KI_INCREASE * damage;
+	m_iMaxKi += flKiIncrease;
+	GiveAmmo(flKiIncrease,"ki",m_iMaxKi);
+
+	SetMaxPowerLevel(m_iMaxPowerLevel);
+	SetMaxKi(m_iMaxKi);
+
+	g_pGameRules->UpdatePlayerStats();
+}
+//end harSens add
 
 void CBasePlayer::DeathSound()
 {
@@ -356,9 +767,10 @@ bool CBasePlayer::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 	bool fcritical;
 	bool fTookDamage;
 	bool ftrivial;
+	float flHealthPrev = pev->health;
+	/* disabled by harSens
 	float flRatio;
 	float flBonus;
-	float flHealthPrev = pev->health;
 
 	flBonus = ARMOR_BONUS;
 	flRatio = ARMOR_RATIO;
@@ -368,6 +780,7 @@ bool CBasePlayer::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 		// blasts damage armor more.
 		flBonus *= 2;
 	}
+	*/
 
 	// Already dead
 	if (!IsAlive())
@@ -383,9 +796,89 @@ bool CBasePlayer::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 		return false;
 	}
 
+	//harSens: attacked with a disc?
+	bool fDisc = false;
+	if (flDamage == 999)
+		fDisc = true;
+
 	// keep track of amount of damage last sustained
 	m_lastDamageAmount = flDamage;
 
+	//added by harSens: turbo & block reduce damage
+	if (m_fTurbo)
+		flDamage *= 0.75;
+
+	//added by harSens
+	int my_yaw = ((int)pev->v_angle.y + 360) % 360;
+	int inflictor_yaw = ((int)pevInflictor->angles.y + 540) % 360;	
+
+	bool blocked = false;
+	if (m_fBlock)
+	{
+		if (inflictor_yaw < my_yaw + 45)
+		{
+			if (inflictor_yaw > my_yaw - 45)
+			{
+				flDamage *= 0.25;
+				blocked = true;
+			}
+		}
+	}
+
+	// give the attacker some higher stats
+	if (pAttacker->IsPlayer())
+	{
+		if (fDisc)
+			((CBasePlayer *)pAttacker)->IncreaseStrength(this, 10);
+		else
+			((CBasePlayer *)pAttacker)->IncreaseStrength(this, flDamage);
+	}
+
+	//blinded by solarflare?
+	int attacker_yaw = ((int)pevAttacker->v_angle.y + 540) % 360;
+	if (!m_fBlinded)
+	{
+		if (bitsDamageType & DMG_FLASH)
+		{
+			//not blinded if we turn our back to the attacker
+			if (attacker_yaw < my_yaw + 75)
+			{
+				if (attacker_yaw > my_yaw - 75)
+				{
+					UTIL_ScreenFade( this, Vector(255, 255, 255), SOLARFLARE_BLIND_TIME/3, SOLARFLARE_BLIND_TIME*2/3, 255, FFADE_IN );
+					m_fBlinded = true;
+					m_flBlindedTime = gpGlobals->time;
+				}
+			}
+		}
+	}
+
+	//hit animations
+	if ((bitsDamageType & DMG_KICK) || (bitsDamageType & DMG_PUNCH))
+	{
+		if (blocked)
+		{
+			//move attacker backward
+			UTIL_MakeVectors(pevInflictor->angles);
+			if (bitsDamageType & DMG_PUNCH)
+				pevInflictor->velocity = pevInflictor->velocity-gpGlobals->v_forward * 75;
+			else
+				pevInflictor->velocity = pevInflictor->velocity-gpGlobals->v_forward * 250;
+		}
+		else
+		{
+			if (bitsDamageType & DMG_KICK)
+			{
+				if (FBitSet( pevInflictor->flags, FL_DUCKING ))
+					CBasePlayer::SetAnimation(PLAYER_HITSWEEP);
+			}
+			UTIL_MakeVectors(pevInflictor->angles);
+			pev->velocity = pev->velocity + gpGlobals->v_forward * 50;
+		}
+	}
+	//end harSens add
+
+	/*removed by harSens no armor in esforces mod :-)
 	// Armor.
 	if (0 != pev->armorvalue && (bitsDamageType & (DMG_FALL | DMG_DROWN)) == 0) // armor doesn't protect against fall or drown damage!
 	{
@@ -408,6 +901,7 @@ bool CBasePlayer::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 
 		flDamage = flNew;
 	}
+	*/
 
 	// this cast to INT is critical!!! If a player ends up with 0.5 health, the engine will get that
 	// as an int (zero) and think the player is dead! (this will incite a clientside screentilt, etc)
@@ -588,6 +1082,7 @@ bool CBasePlayer::TakeDamage(entvars_t* pevInflictor, entvars_t* pevAttacker, fl
 //=========================================================
 void CBasePlayer::PackDeadPlayerItems()
 {
+	/* changed by harSens: only pack sensubeans
 	int iWeaponRules;
 	int iAmmoRules;
 	int i;
@@ -762,6 +1257,10 @@ void CBasePlayer::PackDeadPlayerItems()
 
 		pWeaponBox->pev->velocity = pev->velocity * 1.2; // weaponbox has player's velocity, then some.
 	}
+	*/
+
+	if (m_iSensuBeans > 0)
+		CPlayerBag::CreateBag(m_iSensuBeans, this);
 
 	RemoveAllItems(true); // now strip off everything that wasn't handled by the code above.
 }
@@ -810,6 +1309,11 @@ void CBasePlayer::RemoveAllItems(bool removeSuit)
 		m_rgAmmo[i] = 0;
 
 	UpdateClientData();
+	//added by harSens: update senzubean status
+	m_iSensuBeans = 0;
+	MESSAGE_BEGIN( MSG_ONE, gmsgSensuBean, NULL, pev );
+		WRITE_BYTE(0);
+	MESSAGE_END();
 }
 
 /*
@@ -842,8 +1346,26 @@ void CBasePlayer::Killed(entvars_t* pevAttacker, int iGib)
 			pSound->Reset();
 		}
 	}
+	
+	//added by harSens:unblind player
+	if (m_fBlinded)
+		UTIL_ScreenFade	( this, Vector(255, 255, 255), 0, 0, 255, FFADE_IN );
 
-	SetAnimation(PLAYER_DIE);
+	//added by harSens:disable special modes
+	if (m_fPowerUp)
+		StopPowerUp();
+
+	if (m_fBlock)
+		StopBlock();
+
+	if (m_fFlying)
+		StopFly();
+
+	if (m_fTurbo)
+		StopTurbo();
+	//end harSens add
+
+	CBasePlayer::SetAnimation(PLAYER_DIE);
 
 	m_flRespawnTimer = 0.0f;
 
@@ -900,6 +1422,9 @@ void CBasePlayer::Killed(entvars_t* pevAttacker, int iGib)
 	pev->angles.x = 0;
 	pev->angles.z = 0;
 
+	//added by harSens: fade player away
+	pev->renderamt = 255;
+
 	SetThink(&CBasePlayer::PlayerDeathThink);
 	pev->nextthink = gpGlobals->time + 0.1;
 }
@@ -908,6 +1433,7 @@ void CBasePlayer::Killed(entvars_t* pevAttacker, int iGib)
 // Set the activity based on an event or current state
 void CBasePlayer::SetAnimation(PLAYER_ANIM playerAnim)
 {
+	int n;
 	int animDesired;
 	float speed;
 	char szAnim[64];
@@ -950,9 +1476,48 @@ void CBasePlayer::SetAnimation(PLAYER_ANIM playerAnim)
 			break;
 		}
 		break;
+	//added by harSens
+	case PLAYER_CATCHBEAN:
+		m_IdealActivity = ACT_CATCHBEAN;
+		break;
+	
+	case PLAYER_ATTACK2:	
+		switch( m_Activity )
+		{
+		case ACT_HOVER:
+		case ACT_SWIM:
+		case ACT_HOP:
+		case ACT_LEAP:
+		case ACT_DIESIMPLE:
+			m_IdealActivity = m_Activity;
+			break;
+		default:
+			m_IdealActivity = ACT_RANGE_ATTACK2;
+			break;
+		}
+		break;
+	//end harSens add
 	case PLAYER_IDLE:
 	case PLAYER_WALK:
-		if (!FBitSet(pev->flags, FL_ONGROUND) && (m_Activity == ACT_HOP || m_Activity == ACT_LEAP)) // Still jumping
+		//added by harSens: below modes disable walking 
+		if (m_fBlock)
+		{
+			m_IdealActivity = ACT_BLOCK;
+		}
+		else if (m_fCharging)
+		{
+			m_IdealActivity = ACT_CHARGE;
+		}
+		else if (m_fPowerUp)
+		{
+			m_IdealActivity = ACT_POWERUP;
+		}
+		else if (m_fControl)
+		{
+			m_IdealActivity = ACT_CONTROL;
+		}
+		//end harSens add
+		else if (!FBitSet(pev->flags, FL_ONGROUND) && (m_Activity == ACT_HOP || m_Activity == ACT_LEAP)) // Still jumping
 		{
 			m_IdealActivity = m_Activity;
 		}
@@ -968,14 +1533,79 @@ void CBasePlayer::SetAnimation(PLAYER_ANIM playerAnim)
 			m_IdealActivity = ACT_WALK;
 		}
 		break;
+	//added by harSens: custom animations
+	case PLAYER_BLOCK:
+		m_IdealActivity = ACT_BLOCK;
+		break;
+	case PLAYER_POWERUP:
+		m_IdealActivity = ACT_POWERUP;
+		break;
+	case PLAYER_CHARGE:
+		m_IdealActivity = ACT_CHARGE;
+		break;
+	case PLAYER_CONTROL:
+		m_IdealActivity = ACT_CONTROL;
+		break;
+	case PLAYER_PUNCH:
+		m_IdealActivity = ACT_PUNCH;
+		break;
+	case PLAYER_KICK:
+		m_IdealActivity = ACT_KICK;
+		break;
+	case PLAYER_BACKFLIP:
+		m_IdealActivity = ACT_BACKFLIP;
+		break;
+	case PLAYER_HITSWEEP:
+		m_IdealActivity = ACT_HITSWEEP;
+		break;
+	//end harSens add
 	}
 
 	switch (m_IdealActivity)
 	{
 	case ACT_HOVER:
 	case ACT_LEAP:
-	case ACT_SWIM:
+	case ACT_SWIM://added by harSens
+		if (m_fHoldDisc)
+		{
+			animDesired = LookupSequence( "disc_swim" );
+			if (animDesired == -1)
+				animDesired = 0;
+
+			if (pev->sequence == animDesired)
+				return;
+
+			m_Activity = m_IdealActivity;
+
+			pev->gaitsequence = 0;
+			pev->sequence = animDesired;
+			pev->frame = 0;
+			ResetSequenceInfo();
+			return;
+		}
+		//end harSens add
 	case ACT_HOP:
+		//added by harSens
+		if (m_fHoldDisc)
+		{
+			animDesired = LookupSequence( "disc_jump" );
+			if (animDesired == -1)
+				animDesired = 0;
+
+			if ( pev->sequence != animDesired || !m_fSequenceLoops )
+				pev->frame = 0;
+
+			if (!m_fSequenceLoops)
+				pev->effects |= EF_NOINTERP;
+
+			m_Activity = m_IdealActivity;
+
+			pev->gaitsequence = 0;
+			pev->sequence = animDesired;
+			ResetSequenceInfo();
+			return;
+		}
+		//end harSens add
 	case ACT_DIESIMPLE:
 	default:
 		if (m_Activity == m_IdealActivity)
@@ -1021,8 +1651,60 @@ void CBasePlayer::SetAnimation(PLAYER_ANIM playerAnim)
 		ResetSequenceInfo();
 		break;
 
+	//added by harSens
+	case ACT_RANGE_ATTACK2:
+		if (FBitSet(pev->flags, FL_DUCKING)) // crouching
+			strcpy(szAnim, "crouch_shoot2_");
+		else
+			strcpy(szAnim, "ref_shoot2_");
+		strcat(szAnim, m_szAnimExtention);
+		animDesired = LookupSequence(szAnim);
+		if (animDesired == -1)
+			animDesired = 0;
+
+		if (pev->sequence != animDesired || !m_fSequenceLoops)
+			pev->frame = 0;
+
+		if (!m_fSequenceLoops)
+			pev->effects |= EF_NOINTERP;
+
+		m_Activity = m_IdealActivity;
+
+		pev->sequence = animDesired;
+		ResetSequenceInfo();
+		break;
+	case ACT_CATCHBEAN:
+		if (!m_fHoldDisc)
+		{
+			m_Activity = m_IdealActivity;
+
+			if (FBitSet(pev->flags, FL_DUCKING)) // crouching
+				strcpy(szAnim, "crouch_catch_bean");
+			else
+				strcpy(szAnim, "ref_catch_bean");
+			animDesired = LookupSequence(szAnim);
+			if (animDesired == -1)
+				animDesired = 0;
+
+			// Already using the desired animation?
+			if (pev->sequence == animDesired)
+				return;
+
+			pev->gaitsequence = 0;
+			pev->sequence = animDesired;
+			pev->frame = 0;
+			ResetSequenceInfo();
+			return;
+		}
+	//end harSens add
 	case ACT_WALK:
+		//added by harSens: don't walk while in kick/backflip
+		if ( (m_Activity == ACT_KICK || m_Activity == ACT_BACKFLIP ||m_Activity == ACT_HITSWEEP) && !m_fSequenceFinished) return;
+		
+		/* modified by harSens
 		if (m_Activity != ACT_RANGE_ATTACK1 || m_fSequenceFinished)
+		*/
+		if ((m_Activity != ACT_RANGE_ATTACK1 && m_Activity != ACT_RANGE_ATTACK2 && m_Activity != ACT_PUNCH) || m_fSequenceFinished)
 		{
 			if (FBitSet(pev->flags, FL_DUCKING)) // crouching
 				strcpy(szAnim, "crouch_aim_");
@@ -1030,6 +1712,17 @@ void CBasePlayer::SetAnimation(PLAYER_ANIM playerAnim)
 				strcpy(szAnim, "ref_aim_");
 			strcat(szAnim, m_szAnimExtention);
 			animDesired = LookupSequence(szAnim);
+
+			// added by harSens:aim animation not found. use general aim
+			if (animDesired == -1)
+			{
+				if (FBitSet(pev->flags, FL_DUCKING)) // crouching
+					animDesired = LookupSequence("crouch_aim_general");
+				else
+					animDesired = LookupSequence("ref_aim_general");
+			}
+			//end harSens add
+
 			if (animDesired == -1)
 				animDesired = 0;
 			m_Activity = ACT_WALK;
@@ -1038,7 +1731,186 @@ void CBasePlayer::SetAnimation(PLAYER_ANIM playerAnim)
 		{
 			animDesired = pev->sequence;
 		}
+		break;
+	//added by harSens: custom animations
+	case ACT_PUNCH:
+		//randomly choose left or right punch
+		n = RANDOM_LONG(0, 1);
+		if (n)
+			animDesired = LookupSequence("punch_r");
+		else
+			animDesired = LookupSequence("punch_l");
+
+		if (animDesired == -1)
+			animDesired = 0;
+
+		if (pev->sequence != animDesired || !m_fSequenceLoops)
+			pev->frame = 0;
+
+		if (!m_fSequenceLoops)
+			pev->effects |= EF_NOINTERP;
+
+		m_Activity = m_IdealActivity;
+
+		pev->sequence = animDesired;
+		ResetSequenceInfo();
+		break;
+	case ACT_KICK:
+		if (m_fFlying && speed > 10)
+			animDesired = LookupSequence("blow_kick_front");
+		else if ( FBitSet(pev->flags, FL_DUCKING))
+			animDesired = LookupSequence("kick_sweep");
+		else
+		{
+			n = RANDOM_LONG(0, 1);
+			if (n)
+				animDesired = LookupSequence("kick_r");
+			else
+				animDesired = LookupSequence("kick_l");			
+		}
+
+		if (animDesired == -1)
+			animDesired = 0;
+		
+		if (pev->sequence != animDesired || !m_fSequenceLoops)
+			pev->frame = 0;
+
+		if (!m_fSequenceLoops)
+			pev->effects |= EF_NOINTERP;
+
+		m_Activity = m_IdealActivity;
+
+		pev->gaitsequence = 0;
+		pev->sequence = animDesired;
+		ResetSequenceInfo();
+		return;
+	case ACT_HITSWEEP:
+		animDesired = LookupSequence("sweep_recover");
+
+		if (animDesired == -1)
+			animDesired = 0;
+
+		if (pev->sequence != animDesired || !m_fSequenceLoops)
+			pev->frame = 0;
+
+		if (!m_fSequenceLoops)
+			pev->effects |= EF_NOINTERP;
+
+		m_Activity = m_IdealActivity;
+
+		pev->gaitsequence = 0;
+		pev->sequence = animDesired;
+		ResetSequenceInfo();		
+		return;
+	case ACT_BACKFLIP:
+		animDesired = LookupSequence("back_flip");
+		
+		if (animDesired == -1)
+			animDesired = 0;
+
+		if (pev->sequence != animDesired || !m_fSequenceLoops)
+			pev->frame = 0;
+
+		if (!m_fSequenceLoops)
+			pev->effects |= EF_NOINTERP;
+
+		m_Activity = m_IdealActivity;
+
+		pev->gaitsequence = 0;
+		pev->sequence = animDesired;
+		ResetSequenceInfo();
+		return;
+	case ACT_BLOCK:
+		m_Activity = m_IdealActivity;
+
+		//check if we're ducking
+		if (FBitSet(pev->flags, FL_DUCKING))
+			animDesired = LookupSequence("crouch_block");
+		else
+			animDesired = LookupSequence("ref_block");
+
+		if (animDesired == -1)
+			animDesired = 0;			
+
+		// Already using the desired animation?
+		if (pev->sequence == animDesired)
+			return;
+
+		pev->gaitsequence = 0;
+		pev->sequence = animDesired;
+		pev->frame = 0;
+		ResetSequenceInfo();		
+		return;
+	case ACT_POWERUP:
+		m_Activity = m_IdealActivity;
+
+		//check if we're ducking
+		if (FBitSet(pev->flags, FL_DUCKING))
+			animDesired = LookupSequence ("crouch_powerup");
+		else
+			animDesired = LookupSequence ("ref_powerup");
+				
+		if (animDesired == -1)
+			animDesired = 0;
+
+		// Already using the desired animation?
+		if (pev->sequence == animDesired)
+			return;
+
+		pev->gaitsequence = 0;
+		pev->sequence = animDesired;
+		pev->frame = 0;
+		ResetSequenceInfo();		
+		return;
+	case ACT_CHARGE:
+		m_Activity = m_IdealActivity;
+
+		if (FBitSet(pev->flags, FL_DUCKING))
+			strcpy(szAnim, "crouch_charge_");
+		else
+			strcpy(szAnim, "ref_charge_");
+		strcat(szAnim, m_szAnimExtention);
+
+		animDesired = LookupSequence(szAnim);
+		if (animDesired == -1)
+			animDesired = 0;			
+
+		// Already using the desired animation?
+		if (pev->sequence == animDesired)
+			return;
+
+		pev->gaitsequence = 0;
+		pev->sequence = animDesired;
+		pev->frame = 0;
+		ResetSequenceInfo();		
+		return;
+	case ACT_CONTROL:
+		//wait for attack animation to finish
+		if ( (m_Activity == ACT_RANGE_ATTACK1) && !m_fSequenceFinished) return;
+
+		m_Activity = m_IdealActivity;
+
+		if (FBitSet(pev->flags, FL_DUCKING))
+			strcpy(szAnim, "crouch_control_");
+		else
+			strcpy(szAnim, "ref_control_");
+
+		strcat(szAnim, m_szAnimExtention);
+		animDesired = LookupSequence(szAnim);
+		if (animDesired == -1)
+			animDesired = 0;			
+
+		// Already using the desired animation?
+		if (pev->sequence == animDesired)
+			return;
+
+		pev->gaitsequence = 0;
+		pev->sequence = animDesired;
+		pev->frame = 0;
+		ResetSequenceInfo();
+		return;
 	}
+	//end harSens add
 
 	if (FBitSet(pev->flags, FL_DUCKING))
 	{
@@ -1052,7 +1924,38 @@ void CBasePlayer::SetAnimation(PLAYER_ANIM playerAnim)
 			pev->gaitsequence = LookupActivity(ACT_CROUCH);
 		}
 	}
-	else if (speed > 220)
+	//added by harSens: fly animations
+	else if (m_fFlying)
+	{
+		if (speed > 10)
+		{
+			float flspeed = pev->velocity.Length();
+			UTIL_MakeVectors(pev->v_angle);
+			Vector vecFlyForward = gpGlobals->v_forward * flspeed;
+			if ((vecFlyForward - pev->velocity).Length() > 25)
+			{
+				pev->gaitsequence = LookupSequence("fly_backward");
+				if (m_pAura)
+					m_pAura->SetAnimation("fly_backward");
+			}
+			else
+			{
+				pev->gaitsequence = LookupSequence("fly_forward");
+				if (m_pAura)
+					m_pAura->SetAnimation("fly_forward");
+			}
+		}
+		else
+		{
+			pev->gaitsequence = LookupSequence("fly_idle");
+			if (m_pAura)
+				m_pAura->SetAnimation("idle");
+		}
+	}
+	//end harSens add
+	//changed by harSens: speed changes 
+	//else if ( speed > 220 )
+	else if (speed > (float)CBasePlayer::GetMaxSpeed() / 2)
 	{
 		pev->gaitsequence = LookupActivity(ACT_RUN);
 	}
@@ -1103,7 +2006,10 @@ void CBasePlayer::TabulateAmmo()
 WaterMove
 ============
 */
+/*modified by harSens: ZWarriors can stay longer underwater :-)
 #define AIRTIME 12 // lung full of air lasts this many seconds
+*/
+#define AIRTIME	90		// lung full of air lasts this many seconds
 
 void CBasePlayer::WaterMove()
 {
@@ -1236,6 +2142,104 @@ void CBasePlayer::WaterMove()
 	}
 }
 
+/*
+harSens:Gives you a few beans
+*/
+bool CBasePlayer::GiveBean(int nr_of_beans)
+{
+	if (m_iSensuBeans<MAX_SENSUBEAN)
+	{
+		m_iSensuBeans+=nr_of_beans;
+		if (m_iSensuBeans>MAX_SENSUBEAN)
+			m_iSensuBeans = MAX_SENSUBEAN;
+
+		//update hud
+		MESSAGE_BEGIN(MSG_ONE, gmsgSensuBean, NULL, pev);
+			WRITE_BYTE(m_iSensuBeans);
+		MESSAGE_END();
+
+		return true;
+	}
+	return false;
+}
+
+/*
+harSens: take a bean, restoring health, ki and powerlevel
+*/
+bool CBasePlayer::TakeBean()
+{
+	if (m_iSensuBeans > 0)
+	{
+		m_iSensuBeans--;
+
+		//update hud
+		MESSAGE_BEGIN(MSG_ONE, gmsgSensuBean, NULL, pev);
+			WRITE_BYTE(m_iSensuBeans);
+		MESSAGE_END();
+
+		//restore health,ki,powerlevel
+		GiveAmmo(m_iMaxKi,"ki",m_iMaxKi);	//set max ki
+		m_iPowerLevel = m_iMaxPowerLevel;	//restore power level
+		pev->health = m_iMaxHealth;			//restore health
+
+		return true;
+	}
+	return false;
+}
+
+/*
+harSens Flying code
+*/
+void CBasePlayer::FlyAround( void )
+{
+	if (m_fFlying)
+	{
+		//decrease ki
+		int ki_slot = GetAmmoIndex("ki");
+		if (m_rgAmmo[ki_slot] >= FLY_KI_COST)
+			m_rgAmmo[ki_slot] -= FLY_KI_COST;
+		else //not enough ki, stop flying
+			StopFly();
+
+		//hack hack, keep calling animation to get the animations fluently
+		CBasePlayer::SetAnimation(PLAYER_WALK);
+	}	
+}
+
+void CBasePlayer::SetMaxHealth(int health)
+{
+	MESSAGE_BEGIN(MSG_ONE, gmsgMaxHealth, NULL, pev); 
+		WRITE_BYTE(health);	
+	MESSAGE_END();		
+}
+
+void CBasePlayer::SetMaxKi(int ki)
+{
+	MESSAGE_BEGIN(MSG_ONE, gmsgMaxKi, NULL, pev); 
+		WRITE_LONG(ki * 1.5);	
+	MESSAGE_END();		
+}
+
+void CBasePlayer::SetMaxPowerLevel(int powerlevel)
+{
+	MESSAGE_BEGIN(MSG_ONE, gmsgMaxPowerLevel, NULL, pev); 
+		WRITE_LONG(powerlevel * 1.5);	
+	MESSAGE_END();
+}
+
+/*
+* harSens speed thingie
+*/
+int CBasePlayer::GetMaxSpeed( void )
+{
+	return (m_fTurbo ? m_iMaxSpeed * 2: m_iMaxSpeed) * m_flSlowDown;
+}
+
+int CBasePlayer::GetPowerLevel( void )
+{
+	return (m_fTurbo ? 1.25 : 1) * m_iPowerLevel;
+}
+//end harSens add
 
 // true if the player is attached to a ladder
 bool CBasePlayer::IsOnLadder()
@@ -1256,7 +2260,10 @@ void CBasePlayer::PlayerDeathThink()
 			pev->velocity = flForward * pev->velocity.Normalize();
 	}
 
+	/* modified by harSens
 	if (HasWeapons())
+	*/
+	if (HasWeapons() || m_iSensuBeans > 0)
 	{
 		// we drop the guns here because weapons that have an area effect and can kill their user
 		// will sometimes crash coming back from CBasePlayer::Killed() if they kill their owner because the
@@ -1297,6 +2304,10 @@ void CBasePlayer::PlayerDeathThink()
 	pev->effects |= EF_NOINTERP;
 	pev->framerate = 0.0;
 
+	//added by harSens: fade player away
+	if (pev->renderamt > 0)
+		pev->renderamt--;
+
 	bool fAnyButtonDown = (pev->button & ~IN_SCORE) != 0;
 
 	// wait for all buttons released
@@ -1317,7 +2328,10 @@ void CBasePlayer::PlayerDeathThink()
 	// if the player has been dead for one second longer than allowed by forcerespawn,
 	// forcerespawn isn't on. Send the player off to an intermission camera until they
 	// choose to respawn.
+	/*modified by harSens: longer fade out :)
 	if (g_pGameRules->IsMultiplayer() && (gpGlobals->time > (m_fDeadTime + 6)) && (m_afPhysicsFlags & PFLAG_OBSERVER) == 0)
+	*/
+	if (g_pGameRules->IsMultiplayer() && (gpGlobals->time > (m_fDeadTime + 12)) && (m_afPhysicsFlags & PFLAG_OBSERVER) == 0)
 	{
 		// go to dead camera.
 		StartDeathCam();
@@ -1335,7 +2349,23 @@ void CBasePlayer::PlayerDeathThink()
 
 	//ALERT(at_console, "Respawn\n");
 
+	//added by harSens: change class if randompc
+	if (m_fRandomClass)
+	{
+		int cur_class = m_pClass->Classify();
+		int next_class = cur_class;
+		while (next_class == cur_class)
+		{
+			next_class = RANDOM_LONG(0, PC_LAST - 1);
+		}
+		ChangeClass(CBaseClass::GetName(next_class));
+	}
+	//end harSens add
+
+	/*modified by harSens: never copy bodies
 	respawn(pev, (m_afPhysicsFlags & PFLAG_OBSERVER) == 0); // don't copy a corpse if we're in deathcam.
+	*/
+	respawn(pev, false);
 	pev->nextthink = -1;
 }
 
@@ -1373,7 +2403,9 @@ void CBasePlayer::StartDeathCam()
 			iRand--;
 		}
 
+		/*removed by harSens
 		CopyToBodyQue(pev);
+		*/
 
 		UTIL_SetOrigin(pev, pSpot->v.origin);
 		pev->angles = pev->v_angle = pSpot->v.v_angle;
@@ -1382,7 +2414,9 @@ void CBasePlayer::StartDeathCam()
 	{
 		// no intermission spot. Push them up in the air, looking down at their corpse
 		TraceResult tr;
+		/*removed by harSens
 		CopyToBodyQue(pev);
+		*/
 		UTIL_TraceLine(pev->origin, pev->origin + Vector(0, 0, 128), ignore_monsters, edict(), &tr);
 
 		UTIL_SetOrigin(pev, tr.vecEndPos);
@@ -1600,6 +2634,10 @@ void CBasePlayer::Jump()
 	Vector vecSpot;
 	TraceResult tr;
 
+	//added by harSens
+	if (m_fFlying) //don't jump while flying
+		return;
+
 	if (FBitSet(pev->flags, FL_WATERJUMP))
 		return;
 
@@ -1624,14 +2662,14 @@ void CBasePlayer::Jump()
 
 	// ClearBits(pev->flags, FL_ONGROUND);		// don't stairwalk
 
-	SetAnimation(PLAYER_JUMP);
+	CBasePlayer::SetAnimation(PLAYER_JUMP);
 
 	if (m_fLongJump &&
 		(pev->button & IN_DUCK) != 0 &&
 		(pev->flDuckTime > 0) &&
 		pev->velocity.Length() > 50)
 	{
-		SetAnimation(PLAYER_SUPERJUMP);
+		CBasePlayer::SetAnimation(PLAYER_SUPERJUMP);
 	}
 
 	// If you're standing on a conveyor, add it's velocity to yours (for momentum)
@@ -1677,7 +2715,7 @@ void CBasePlayer::Duck()
 	{
 		if (m_IdealActivity != ACT_LEAP)
 		{
-			SetAnimation(PLAYER_WALK);
+			CBasePlayer::SetAnimation(PLAYER_WALK);
 		}
 	}
 }
@@ -1835,12 +2873,355 @@ void CBasePlayer::UpdateStatusBar()
 	}
 }
 
+// old HL1SDK code used here 
 
+// play a footstep if it's time - this will eventually be frame-based. not time based.
 
+#define STEP_CONCRETE	0		// default step sound
+#define STEP_METAL		1		// metal floor
+#define STEP_DIRT		2		// dirt, sand, rock
+#define STEP_VENT		3		// ventillation duct
+#define STEP_GRATE		4		// metal grating
+#define STEP_TILE		5		// floor tiles
+#define STEP_SLOSH		6		// shallow liquid puddle
+#define STEP_WADE		7		// wading in liquid
+#define STEP_LADDER		8		// climbing ladder
 
+// Play correct step sound for material we're on or in
 
+void CBasePlayer::PlayStepSound(int step, float fvol)
+{
+	static int iSkipStep = 0;
 
+	//added by harSens
+	if (m_fFlying)
+		return; //we're flying, don't play step sounds
 
+	if ( !g_pGameRules->PlayFootstepSounds( this, fvol ) )
+		return;
+
+	// irand - 0,1 for right foot, 2,3 for left foot
+	// used to alternate left and right foot
+	int irand = RANDOM_LONG(0,1) + (m_iStepLeft * 2);
+
+	m_iStepLeft = !m_iStepLeft;
+
+	switch (step)
+	{
+	default:
+	case STEP_CONCRETE:
+		switch (irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_step1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_step3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_step2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_step4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_METAL:
+		switch(irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_metal1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_metal3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_metal2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_metal4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_DIRT:
+		switch(irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_dirt1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_dirt3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_dirt2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_dirt4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_VENT:
+		switch(irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_duct1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_duct3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_duct2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_duct4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_GRATE:
+		switch(irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_grate1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_grate3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_grate2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_grate4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_TILE:
+		if (!RANDOM_LONG(0,4))
+			irand = 4;
+		switch(irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_tile1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_tile3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_tile2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_tile4.wav", fvol, ATTN_NORM);	break;
+		case 4: EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_tile5.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_SLOSH:
+		switch(irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_slosh1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_slosh3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_slosh2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_slosh4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_WADE:
+		if ( iSkipStep == 0 )
+		{
+			iSkipStep++;
+			break;
+		}
+
+		if ( iSkipStep++ == 3 )
+		{
+			iSkipStep = 0;
+		}
+
+		switch (irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_wade1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_wade2.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_wade3.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_wade4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	case STEP_LADDER:
+		switch(irand)
+		{
+		// right foot
+		case 0:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_ladder1.wav", fvol, ATTN_NORM);	break;
+		case 1:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_ladder3.wav", fvol, ATTN_NORM);	break;
+		// left foot
+		case 2:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_ladder2.wav", fvol, ATTN_NORM);	break;
+		case 3:	EMIT_SOUND( ENT(pev), CHAN_BODY, "player/pl_ladder4.wav", fvol, ATTN_NORM);	break;
+		}
+		break;
+	}
+}	
+
+// Simple mapping from texture type character to step type
+
+int MapTextureTypeStepType(char chTextureType)
+{
+switch (chTextureType)
+	{
+	default:
+	case CHAR_TEX_CONCRETE:	return STEP_CONCRETE;	
+	case CHAR_TEX_METAL: return STEP_METAL;	
+	case CHAR_TEX_DIRT: return STEP_DIRT;	
+	case CHAR_TEX_VENT: return STEP_VENT;	
+	case CHAR_TEX_GRATE: return STEP_GRATE;	
+	case CHAR_TEX_TILE: return STEP_TILE;
+	case CHAR_TEX_SLOSH: return STEP_SLOSH;
+	}
+}
+
+// Play left or right footstep based on material player is on or in
+
+void CBasePlayer::UpdateStepSound( void )
+{
+	int	fWalking;
+	float fvol;
+	char szbuffer[64];
+	const char *pTextureName;
+	Vector start, end;
+	float rgfl1[3];
+	float rgfl2[3];
+	Vector knee;
+	Vector feet;
+	Vector center;
+	float height;
+	float speed;
+	float velrun;
+	float velwalk;
+	float flduck;
+	int	fLadder;
+	int step;
+
+	if (gpGlobals->time <= m_flTimeStepSound)
+		return;
+
+	if (pev->flags & FL_FROZEN)
+		return;
+
+	speed = pev->velocity.Length();
+
+	// determine if we are on a ladder
+	fLadder = CBasePlayer::IsOnLadder();
+
+	// UNDONE: need defined numbers for run, walk, crouch, crouch run velocities!!!!	
+	if (FBitSet(pev->flags, FL_DUCKING) || fLadder)
+	{
+		//changed by harSens
+		//velwalk = 60;				// These constants should be based on cl_movespeedkey * cl_forwardspeed somehow
+		//velrun = 80;				// UNDONE: Move walking to server
+		velwalk = (float)CBasePlayer::GetMaxSpeed() / 4;	// These constants should be based on cl_movespeedkey * cl_forwardspeed somehow
+		velrun = (float)CBasePlayer::GetMaxSpeed() / 3;	// UNDONE: Move walking to server
+		flduck = 0.1;
+	}
+	else
+	{
+		//changed by harSens
+		//velwalk = 120;
+		//velrun = 210;
+		velwalk = (float)CBasePlayer::GetMaxSpeed()/ 2;
+		velrun = (float)CBasePlayer::GetMaxSpeed();
+		flduck = 0.0;
+	}
+
+	// ALERT (at_console, "vel: %f\n", vecVel.Length());
+	
+	// if we're on a ladder or on the ground, and we're moving fast enough,
+	// play step sound.  Also, if m_flTimeStepSound is zero, get the new
+	// sound right away - we just started moving in new level.
+
+	if ((fLadder || FBitSet (pev->flags, FL_ONGROUND)) && pev->velocity != g_vecZero 
+		&& (speed >= velwalk || !m_flTimeStepSound))
+	{
+		CBasePlayer::SetAnimation( PLAYER_WALK );
+		
+		fWalking = speed < velrun;		
+
+		center = knee = feet = (pev->absmin + pev->absmax) * 0.5;
+		height = pev->absmax.z - pev->absmin.z;
+
+		knee.z = pev->absmin.z + height * 0.2;
+		feet.z = pev->absmin.z;
+
+		// find out what we're stepping in or on...
+		if (fLadder)
+		{
+			step = STEP_LADDER;
+			fvol = 0.35;
+			m_flTimeStepSound = gpGlobals->time + 0.35;
+		}
+		else if ( UTIL_PointContents ( knee ) == CONTENTS_WATER )
+		{
+			step = STEP_WADE;
+			fvol = 0.65;
+			m_flTimeStepSound = gpGlobals->time + 0.6;
+		}
+		else if (UTIL_PointContents ( feet ) == CONTENTS_WATER )
+		{
+			step = STEP_SLOSH;
+			fvol = fWalking ? 0.2 : 0.5;
+			m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;		
+		}
+		else
+		{
+			// find texture under player, if different from current texture, 
+			// get material type
+
+			start = end = center;							// center point of player BB
+			start.z = end.z = pev->absmin.z;				// copy zmin
+			start.z += 4.0;									// extend start up
+			end.z -= 24.0;									// extend end down
+			
+			start.CopyToArray(rgfl1);
+			end.CopyToArray(rgfl2);
+
+			pTextureName = TRACE_TEXTURE( ENT( pev->groundentity), rgfl1, rgfl2 );
+			if ( pTextureName )
+			{
+				// strip leading '-0' or '{' or '!'
+				if (*pTextureName == '-')
+					pTextureName += 2;
+				if (*pTextureName == '{' || *pTextureName == '!')
+					pTextureName++;
+				
+				if (_strnicmp(pTextureName, m_szTextureName, CBTEXTURENAMEMAX-1))
+				{
+					// current texture is different from texture player is on...
+					// set current texture
+					strcpy(szbuffer, pTextureName);
+					szbuffer[CBTEXTURENAMEMAX - 1] = 0;
+					strcpy(m_szTextureName, szbuffer);
+					
+					// ALERT ( at_aiconsole, "texture: %s\n", m_szTextureName );
+
+					// get texture type
+					m_chTextureType = TEXTURETYPE_Find(m_szTextureName);	
+				}
+			}
+			
+			step = MapTextureTypeStepType(m_chTextureType);
+
+			switch (m_chTextureType)
+			{
+			default:
+			case CHAR_TEX_CONCRETE:						
+				fvol = fWalking ? 0.2 : 0.5;
+				m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;
+				break;
+
+			case CHAR_TEX_METAL:	
+				fvol = fWalking ? 0.2 : 0.5;
+				m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;
+				break;
+
+			case CHAR_TEX_DIRT:	
+				fvol = fWalking ? 0.25 : 0.55;
+				m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;
+				break;
+
+			case CHAR_TEX_VENT:	
+				fvol = fWalking ? 0.4 : 0.7;
+				m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;
+				break;
+
+			case CHAR_TEX_GRATE:
+				fvol = fWalking ? 0.2 : 0.5;
+				m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;
+				break;
+
+			case CHAR_TEX_TILE:	
+				fvol = fWalking ? 0.2 : 0.5;
+				m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;
+				break;
+
+			case CHAR_TEX_SLOSH:
+				fvol = fWalking ? 0.2 : 0.5;
+				m_flTimeStepSound = fWalking ? gpGlobals->time + 0.4 : gpGlobals->time + 0.3;
+				break;
+			}
+		}
+		
+		m_flTimeStepSound += flduck; // slower step time if ducking
+
+		// play the sound
+
+		// 35% volume if ducking
+		if ( pev->flags & FL_DUCKING )
+			fvol *= 0.35;
+	}
+}
+// end of old HL1SDK code used
 
 
 #define CLIMB_SHAKE_FREQUENCY 22 // how many frames in between screen shakes when climbing
@@ -1867,6 +3248,53 @@ void CBasePlayer::PreThink()
 
 	ItemPreFrame();
 	WaterMove();
+
+	//added by harSens
+	FlyAround();
+
+	// update aura trail thingie
+	if (m_pAura)
+	{
+		if (m_pAura->m_fHasTrail && !pev->velocity.Length())
+			m_pAura->m_fHasTrail = false;
+	}
+
+	//slowly increase ki
+	if (gpGlobals->time-m_flAddKi > 1)
+	{
+		if(!m_fFlying && !m_fTurbo)
+			GiveAmmo(0.02 * m_iMaxKi, "ki", m_iMaxKi);
+		
+		if(m_fPowerUp)
+			GiveAmmo(0.1 * m_iMaxKi, "ki", m_iMaxKi * 1.5);
+
+		m_flAddKi = gpGlobals->time;
+	}
+
+	if (m_fTurbo)
+	{
+		//decrease ki
+		int ki_slot = GetAmmoIndex("ki");
+		if (m_rgAmmo[ki_slot] >= TURBO_KI_COST)
+			m_rgAmmo[ki_slot] -= TURBO_KI_COST;
+		else //not enough ki, stop turbo mode
+			StopTurbo();		
+	}
+	
+	//check if we are still blinded
+	if (m_fBlinded)
+	{
+		if (gpGlobals->time - m_flBlindedTime > SOLARFLARE_BLIND_TIME)
+			m_fBlinded = false;
+	}
+
+	//decreases powerlevel if we are low on health
+	if (pev->health < 10)
+	{
+		if (m_iPowerLevel > 0)
+			m_iPowerLevel -= m_iMaxPowerLevel * 0.0001;
+	}
+	//end harSens add
 
 	if (g_pGameRules && g_pGameRules->FAllowFlashlight())
 		m_iHideHUD &= ~HIDEHUD_FLASHLIGHT;
@@ -2189,6 +3617,7 @@ void CBasePlayer::CheckTimeBasedDamage()
 
 			if (0 != m_rgbTimeBasedDamage[i])
 			{
+				/*disabled by harSens
 				// use up an antitoxin on poison or nervegas after a few seconds of damage
 				if (((i == itbd_NerveGas) && (m_rgbTimeBasedDamage[i] < NERVEGAS_DURATION)) ||
 					((i == itbd_Poison) && (m_rgbTimeBasedDamage[i] < POISON_DURATION)))
@@ -2200,6 +3629,7 @@ void CBasePlayer::CheckTimeBasedDamage()
 						SetSuitUpdate("!HEV_HEAL4", false, SUIT_REPEAT_OK);
 					}
 				}
+				*/
 
 
 				// decrement damage duration, detect when done.
@@ -2684,7 +4114,7 @@ void CBasePlayer::PostThink()
 
 		if (IsAlive())
 		{
-			SetAnimation(PLAYER_WALK);
+			CBasePlayer::SetAnimation(PLAYER_WALK);
 		}
 	}
 
@@ -2702,11 +4132,11 @@ void CBasePlayer::PostThink()
 	if (IsAlive())
 	{
 		if (0 == pev->velocity.x && 0 == pev->velocity.y)
-			SetAnimation(PLAYER_IDLE);
+			CBasePlayer::SetAnimation(PLAYER_IDLE);
 		else if ((0 != pev->velocity.x || 0 != pev->velocity.y) && (FBitSet(pev->flags, FL_ONGROUND)))
-			SetAnimation(PLAYER_WALK);
+			CBasePlayer::SetAnimation(PLAYER_WALK);
 		else if (pev->waterlevel > 1)
-			SetAnimation(PLAYER_WALK);
+			CBasePlayer::SetAnimation(PLAYER_WALK);
 	}
 
 	StudioFrameAdvance();
@@ -2831,7 +4261,67 @@ edict_t* EntSelectSpawnPoint(CBaseEntity* pPlayer)
 		if (!FNullEnt(pSpot))
 			goto ReturnSpot;
 	}
+
+	//added by harSens
+	if (g_pGameRules->IsTeamplay())
+	{	pSpot = g_pLastSpawn;
+		
+		char spawn_point[255];
+		CBasePlayer *cbPlayer = (CBasePlayer *)pPlayer; // Get a CBasePlayer
+
+		// Randomize the start spot
+		if (FStrEq(cbPlayer->m_szTeamName, "Good")) 
+			strcpy(spawn_point, "info_good_start");
+		else if (FStrEq(cbPlayer->m_szTeamName, "Evil"))
+			strcpy(spawn_point, "info_evil_start");
+		else //no team... shouldn't happen... 
+			strcpy(spawn_point, "info_player_deathmatch");
+
+		for ( int i = RANDOM_LONG(1, 5); i > 0; i-- )
+			pSpot = UTIL_FindEntityByClassname(pSpot, spawn_point);
+		if (FNullEnt(pSpot)) // skip over the null point
+			pSpot = UTIL_FindEntityByClassname(pSpot, spawn_point);
+
+		CBaseEntity *pFirstSpot = pSpot;
+
+		do
+		{
+			if (pSpot)
+			{
+				// check if pSpot is valid
+				if (IsSpawnPointValid(pPlayer, pSpot))
+				{
+					if (pSpot->pev->origin == Vector(0, 0, 0))
+					{
+						pSpot = UTIL_FindEntityByClassname(pSpot, spawn_point);
+						continue;
+					}
+
+					// if so, go to pSpot
+					goto ReturnSpot;
+				}
+			}
+			// increment pSpot
+			pSpot = UTIL_FindEntityByClassname(pSpot, spawn_point);
+		} while (pSpot != pFirstSpot); // loop if we're not back to the start
+
+		// we haven't found a place to spawn yet,  so kill any guy at the first spawn point and spawn there
+		if (!FNullEnt(pSpot))
+		{
+			CBaseEntity *ent = NULL;
+			while ((ent = UTIL_FindEntityInSphere(ent, pSpot->pev->origin, 128)) != NULL)
+			{
+				// if ent is a client, kill em (unless they are ourselves)
+				if (ent->IsPlayer() && !(ent->edict() == player))
+					ent->TakeDamage(VARS(INDEXENT(0)), VARS(INDEXENT(0)), 300, DMG_GENERIC);
+			}
+			goto ReturnSpot;
+		}
+	}
+	/*modified by harSens
 	else if (g_pGameRules->IsDeathmatch())
+	*/
+	if (g_pGameRules->IsDeathmatch())
 	{
 		if (NULL == g_pLastSpawn)
 		{
@@ -2975,7 +4465,9 @@ void CBasePlayer::Spawn()
 	// dont let uninitialized value here hurt the player
 	m_flFallVelocity = 0;
 
+	/*disabled by harSens
 	g_pGameRules->SetDefaultPlayerTeam(this);
+	*/
 	g_pGameRules->GetPlayerSpawnSpot(this);
 
 	SET_MODEL(ENT(pev), "models/player.mdl");
@@ -3005,12 +4497,40 @@ void CBasePlayer::Spawn()
 	m_pClientActiveItem = NULL;
 	m_iClientBattery = -1;
 
+	//added by harSens
+	m_fFlying = false;
+	m_fTurbo = false;
+	m_flSlowDown = 1.0;
+	m_fBlock = false;
+	m_fCharging = false;
+	m_fControl = false;
+	m_pAura = NULL;
+	m_iSensuBeans = 0;
+	pev->rendermode = kRenderTransTexture;
+	pev->renderamt = 255;
+
+	if (!m_pClass)
+	{
+		m_pClass = new CBaseClass(this);
+		m_fRandomClass = false;
+		m_iMaxKi = 0;
+		m_iMaxPowerLevel = 0;
+		m_iMaxHealth = 0;
+		m_iMaxSpeed = 0;
+	}
+	//end of harSens add
+
 	// reset all ammo values to 0
 	for (int i = 0; i < MAX_AMMO_SLOTS; i++)
 	{
 		m_rgAmmo[i] = 0;
 		m_rgAmmoLast[i] = 0; // client ammo values also have to be reset  (the death hud clear messages does on the client side)
 	}
+
+	//added by harSens
+	m_iClientSpeed = 0; // force speed update to client 
+ 	g_engfuncs.pfnSetClientMaxspeed(ENT(pev), (float)CBasePlayer::GetMaxSpeed());
+	//end harSens add
 
 	m_lastx = m_lasty = 0;
 
@@ -3609,6 +5129,7 @@ void CBasePlayer::CheatImpulseCommands(int iImpulse)
 
 	case 101:
 		gEvilImpulse101 = true;
+		/*disabled by harSens. those no longer exists :-)
 		GiveNamedItem("item_suit");
 		GiveNamedItem("item_battery");
 		GiveNamedItem("weapon_crowbar");
@@ -3633,6 +5154,7 @@ void CBasePlayer::CheatImpulseCommands(int iImpulse)
 		GiveNamedItem("weapon_satchel");
 		GiveNamedItem("weapon_snark");
 		GiveNamedItem("weapon_hornetgun");
+		*/
 
 		gEvilImpulse101 = false;
 		break;
@@ -3920,14 +5442,15 @@ int CBasePlayer::GiveAmmo(int iCount, const char* szName, int iMax)
 	m_rgAmmo[i] += iAdd;
 
 
-	if (0 != gmsgAmmoPickup) // make sure the ammo messages have been linked first
+	//disabled by harSens. no update gfx.
+	/*if (0 != gmsgAmmoPickup) // make sure the ammo messages have been linked first
 	{
 		// Send the message that ammo has been picked up
 		MESSAGE_BEGIN(MSG_ONE, gmsgAmmoPickup, NULL, pev);
 		WRITE_BYTE(GetAmmoIndex(szName)); // ammo ID
 		WRITE_BYTE(iAdd);				  // amount
 		MESSAGE_END();
-	}
+	}*/
 
 	TabulateAmmo();
 
@@ -4055,7 +5578,9 @@ void CBasePlayer::InternalSendSingleAmmoUpdate(int ammoIndex)
 		// send "Ammo" update message
 		MESSAGE_BEGIN(MSG_ONE, gmsgAmmoX, NULL, pev);
 		WRITE_BYTE(ammoIndex);
-		WRITE_BYTE(V_max(V_min(m_rgAmmo[ammoIndex], 254), 0)); // clamp the value to one byte
+		//changed by harSens
+		//WRITE_BYTE(V_max(V_min(m_rgAmmo[ammoIndex], 254), 0)); // clamp the value to one byte
+		WRITE_LONG(m_rgAmmo[ammoIndex]);
 		MESSAGE_END();
 	}
 }
@@ -4147,6 +5672,36 @@ void CBasePlayer::UpdateClientData()
 		m_iClientHealth = pev->health;
 	}
 
+	//added by harSens. speed code.
+	int iSpeed = (float)CBasePlayer::GetMaxSpeed();
+	if (iSpeed != m_iClientSpeed) 
+	{
+		//stop jumping/duckfly, if maxspeed 0
+		if (iSpeed)
+			pev->stop_duck_jump = false;
+		else
+			pev->stop_duck_jump = true;
+
+		// send "Speed" update message 
+		g_engfuncs.pfnSetClientMaxspeed(ENT(pev), (float)CBasePlayer::GetMaxSpeed());
+		MESSAGE_BEGIN(MSG_ONE, gmsgSpeed, NULL, pev); 
+		WRITE_SHORT(iSpeed); 
+		MESSAGE_END(); 
+		m_iClientSpeed = iSpeed; 
+	} 
+	//end harSens add
+
+	//added by harSens. powerlevel code.
+	int iPowerLevel = GetPowerLevel();
+	if (iPowerLevel != m_iClientPowerLevel) 
+	{
+		//send "PowerLevel" update message 
+		MESSAGE_BEGIN(MSG_ONE, gmsgPowerLevel, NULL, pev);
+			WRITE_LONG(iPowerLevel);
+		MESSAGE_END(); 
+		m_iClientPowerLevel = iPowerLevel;
+	} 
+	//end harSens add
 
 	if (pev->armorvalue != m_iClientBattery)
 	{
@@ -4187,6 +5742,7 @@ void CBasePlayer::UpdateClientData()
 		}
 
 		// only send down damage type that have hud art
+		/*removed by harSens
 		int visibleDamageBits = m_bitsDamageType & DMG_SHOWNHUD;
 
 		MESSAGE_BEGIN(MSG_ONE, gmsgDamage, NULL, pev);
@@ -4197,6 +5753,7 @@ void CBasePlayer::UpdateClientData()
 		WRITE_COORD(damageOrigin.y);
 		WRITE_COORD(damageOrigin.z);
 		MESSAGE_END();
+		*/
 
 		pev->dmg_take = 0;
 		pev->dmg_save = 0;

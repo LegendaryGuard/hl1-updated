@@ -31,6 +31,10 @@
 #include "weapons.h"
 #include "gamerules.h"
 #include "UserMessages.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
 float UTIL_WeaponTimeBase()
 {

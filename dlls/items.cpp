@@ -29,6 +29,10 @@
 #include "items.h"
 #include "gamerules.h"
 #include "UserMessages.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
 class CWorldItem : public CBaseEntity
 {
@@ -271,7 +275,8 @@ class CItemAntidote : public CItem
 	{
 		pPlayer->SetSuitUpdate("!HEV_DET4", false, SUIT_NEXT_IN_1MIN);
 
-		pPlayer->m_rgItems[ITEM_ANTIDOTE] += 1;
+		//disabled by harSens
+		//pPlayer->m_rgItems[ITEM_ANTIDOTE] += 1;
 		return true;
 	}
 };
@@ -293,7 +298,8 @@ class CItemSecurity : public CItem
 	}
 	bool MyTouch(CBasePlayer* pPlayer) override
 	{
-		pPlayer->m_rgItems[ITEM_SECURITY] += 1;
+		//disabled by harSens
+		//pPlayer->m_rgItems[ITEM_SECURITY] += 1;
 		return true;
 	}
 };
@@ -337,3 +343,38 @@ class CItemLongJump : public CItem
 };
 
 LINK_ENTITY_TO_CLASS(item_longjump, CItemLongJump);
+
+/**
+* Senzubean class
+* @version: 16-9-2001
+* @author Herwin 'harSens' van Welbergen
+*/
+class CSensuBeanBag : public CItem
+{
+	/**
+	* Spawns the bean
+	*/
+	void Spawn() override
+	{
+		Precache();
+		SET_MODEL(ENT(pev), "models/w_sensubeanbag.mdl");
+		CItem::Spawn();
+	}
+
+	/**
+	* Precaches the models
+	*/
+	void Precache() override
+	{
+		PRECACHE_MODEL("models/w_sensubeanbag.mdl");
+	}
+
+	/**
+	* Touch function
+	*/
+	bool MyTouch(CBasePlayer* pPlayer) override
+	{
+		return pPlayer->GiveBean(3);		
+	}
+};
+LINK_ENTITY_TO_CLASS(item_sensubeanbag, CSensuBeanBag);

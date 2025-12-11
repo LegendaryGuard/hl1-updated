@@ -1375,7 +1375,9 @@ void CBaseEntity::FireBullets(unsigned int cShots, Vector vecSrc, Vector vecDirS
 		pevAttacker = pev; // the default attacker is ourselves
 
 	ClearMultiDamage();
+	/* disabled by harSens
 	gMultiDamage.type = DMG_BULLET | DMG_NEVERGIB;
+	*/
 
 	for (unsigned int iShot = 1; iShot <= cShots; iShot++)
 	{
@@ -1592,7 +1594,10 @@ void CBaseEntity::TraceBleed(float flDamage, Vector vecDir, TraceResult* ptr, in
 	if (flDamage == 0)
 		return;
 
+	/*modified by harSens
 	if ((bitsDamageType & (DMG_CRUSH | DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB | DMG_MORTAR)) == 0)
+	*/
+	if ((bitsDamageType & (DMG_CRUSH | DMG_BULLET | DMG_SLASH | DMG_BLAST | DMG_CLUB | DMG_MAGIC)) == 0)
 		return;
 
 	// make blood decal on the wall!

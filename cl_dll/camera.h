@@ -15,6 +15,10 @@ extern Vector cam_ofs;
 // Using third person camera
 extern bool cam_thirdperson;
 
+//added by harSens
+#define VIEW_FIRSTPERSON 0
+#define VIEW_THIRDPERSON 1
+
 void CAM_Init();
 void CAM_ClearStates();
 void CAM_StartMouseMove();

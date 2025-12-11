@@ -145,8 +145,12 @@ void CBasePlayerWeapon::ItemPostFrame()
 			m_fFireOnEmpty = true;
 		}
 
-		m_pPlayer->TabulateAmmo();
-		SecondaryAttack();
+		//disabled by harSens
+		//m_pPlayer->TabulateAmmo();
+		//added by harSens: don't fire when blocking/powering up
+		if (!m_pPlayer->m_fBlock && !m_pPlayer->m_fPowerUp)
+			SecondaryAttack();
+		//end add
 		m_pPlayer->pev->button &= ~IN_ATTACK2;
 	}
 	else if ((m_pPlayer->pev->button & IN_ATTACK) != 0 && CanAttack(m_flNextPrimaryAttack, gpGlobals->time, UseDecrement()))
@@ -156,8 +160,12 @@ void CBasePlayerWeapon::ItemPostFrame()
 			m_fFireOnEmpty = true;
 		}
 
-		m_pPlayer->TabulateAmmo();
-		PrimaryAttack();
+		//disabled by harSens
+		//m_pPlayer->TabulateAmmo();
+		//added by harSens: don't fire when blocking/powering up
+		if (!m_pPlayer->m_fBlock && !m_pPlayer->m_fPowerUp)
+			PrimaryAttack();
+		//end add
 	}
 	else if ((m_pPlayer->pev->button & IN_RELOAD) != 0 && iMaxClip() != WEAPON_NOCLIP && !m_fInReload)
 	{

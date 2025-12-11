@@ -192,7 +192,7 @@ public:
 	virtual void SetModel( const char *modelName );
 	virtual Vector GetAutoaimVector( float delta );
 
-	void Spawn( void );
+	void Spawn() override;
 	void BotThink( void );
 	bool IsNetClient( void ) const			{ return FALSE; }
 	int Save( CSave &save )	const			{ return 0; }

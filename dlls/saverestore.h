@@ -16,6 +16,9 @@
 
 #pragma once
 
+#include "../engine/eiface.h"
+#include "util.h"
+
 class CBaseEntity;
 
 class CSaveRestoreBuffer

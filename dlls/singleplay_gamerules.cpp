@@ -24,6 +24,10 @@
 #include "skill.h"
 #include "items.h"
 #include "UserMessages.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
 //=========================================================
 //=========================================================

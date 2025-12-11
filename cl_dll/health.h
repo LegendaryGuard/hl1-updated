@@ -52,6 +52,9 @@ public:
 	void Reset() override;
 	bool MsgFunc_Health(const char* pszName, int iSize, void* pbuf);
 	bool MsgFunc_Damage(const char* pszName, int iSize, void* pbuf);
+	//added by harSens
+	int MsgFunc_MaxHealth(const char *pszName,  int iSize, void *pbuf);
+	//end harSens add
 	int m_iHealth;
 	int m_HUD_dmg_bio;
 	int m_HUD_cross;
@@ -65,6 +68,8 @@ private:
 
 	DAMAGE_IMAGE m_dmg[NUM_DMG_TYPES];
 	int m_bitsDamage;
+	//added by harSens
+	int m_iMaxHealth;
 	bool DrawPain(float fTime);
 	bool DrawDamage(float fTime);
 	void CalcDamageDirection(Vector vecFrom);

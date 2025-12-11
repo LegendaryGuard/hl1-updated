@@ -446,6 +446,8 @@ void EV_HLDM_FireBullets(int idx, float* forward, float* right, float* up, int c
 	}
 }
 
+//disabled by harSens
+#if 0
 //======================
 //	    GLOCK START
 //======================
@@ -1551,6 +1553,7 @@ void EV_SnarkFire(event_args_t* args)
 //======================
 //	   SQUEAK END
 //======================
+#endif
 
 void EV_TrainPitchAdjust(event_args_t* args)
 {

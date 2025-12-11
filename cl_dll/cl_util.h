@@ -83,7 +83,10 @@ inline struct cvar_s* CVAR_CREATE(const char* cv, const char* val, const int fla
 #define ServerCmd (*gEngfuncs.pfnServerCmd)
 #define EngineClientCmd (*gEngfuncs.pfnClientCmd)
 #define EngineFilteredClientCmd (*gEngfuncs.pfnFilteredClientCmd)
-#define SetCrosshair (*gEngfuncs.pfnSetCrosshair)
+//modified by harSens
+//#define SetCrosshair (*gEngfuncs.pfnSetCrosshair)
+extern void SetCrosshair(HSPRITE sprite, Rect size, int k, int l, int m);
+//end harSens modify
 #define AngleVectors (*gEngfuncs.pfnAngleVectors)
 
 

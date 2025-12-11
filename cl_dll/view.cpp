@@ -20,6 +20,9 @@
 #include "hltv.h"
 #include "Exports.h"
 
+//added by harSens
+#include "view.h"
+
 int CL_IsThirdPerson();
 void CL_CameraOffset(float* ofs);
 
@@ -497,6 +500,21 @@ void V_CalcNormalRefdef(struct ref_params_s* pparams)
 	Vector camAngles, camForward, camRight, camUp;
 	cl_entity_t* pwater;
 
+	//modified by harSens:right shoulder view 
+	if (pparams->maxclients > 1)
+	{
+		if (CL_IsThirdPerson()) //don't screw 1st person/spectator view :-)
+		{
+			scr_ofsx->value = VIEW_XOFF;
+			scr_ofsy->value = VIEW_YOFF;
+			scr_ofsz->value = VIEW_ZOFF;
+		}
+		else
+		{	scr_ofsx->value = 0.0;
+			scr_ofsy->value = 0.0;
+			scr_ofsz->value = 0.0;
+		}
+	}
 	V_DriftPitch(pparams);
 
 	if (0 != gEngfuncs.IsSpectateOnly())

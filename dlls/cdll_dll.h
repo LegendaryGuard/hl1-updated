@@ -22,8 +22,15 @@
 constexpr int MAX_PLAYERS = 32;
 #define MAX_WEAPONS 64 // ???
 
-#define MAX_WEAPON_SLOTS 5 // hud item selection slots
-#define MAX_ITEM_TYPES 6   // hud item selection slots
+/*increased by harSens
+#define MAX_WEAPON_SLOTS		5	// hud item selection slots
+*/
+#define MAX_WEAPON_SLOTS		9	// hud item selection slots
+
+/*increased by harSens
+#define MAX_ITEM_TYPES		    5	// hud item selection slots
+*/
+#define MAX_ITEM_TYPES		   10	// hud item selection slots
 
 #define MAX_ITEMS 5 // hard coded item types
 
@@ -82,6 +89,9 @@ enum WeaponId
 #define DMG_NEVERGIB (1 << 12)	 // with this bit OR'd in, no damage type will be able to gib victims upon death
 #define DMG_ALWAYSGIB (1 << 13)	 // with this bit OR'd in, any damage type can be made to gib victims upon death.
 
+//added by harSens
+#define DMG_FLASH			(1 << 1)	// solar flare
+
 // time-based damage
 //mask off TF-specific stuff too
 #define DMG_TIMEBASED (~(0xff003fff)) // mask for time-based damage
@@ -95,9 +105,14 @@ enum WeaponId
 #define DMG_RADIATION (1 << 18)	   // radiation exposure
 #define DMG_DROWNRECOVER (1 << 19) // drowning recovery
 #define DMG_ACID (1 << 20)		   // toxic chemicals or acid burns
+/*modified by harSens
 #define DMG_SLOWBURN (1 << 21)	   // in an oven
 #define DMG_SLOWFREEZE (1 << 22)   // in a subzero freezer
 #define DMG_MORTAR (1 << 23)	   // Hit by air raid (done to distinguish grenade from mortar)
+*/
+#define DMG_PUNCH			(1 << 21)	// punched
+#define DMG_KICK			(1 << 22)	// kicked
+#define DMG_MAGIC			(1 << 23)	// Hit by magical attack
 
 //TF ADDITIONS
 #define DMG_IGNITE (1 << 24)	   // Players hit by this begin to burn
@@ -116,15 +131,17 @@ enum WeaponId
 #define DMG_NAIL DMG_SLASH
 #define DMG_NOT_SELF DMG_FREEZE
 
-
-#define DMG_TRANQ DMG_MORTAR
+//disabled by harSens
+//#define DMG_TRANQ DMG_MORTAR
 #define DMG_CONCUSS DMG_SONIC
 
 // these are the damage types that are allowed to gib corpses
 #define DMG_GIB_CORPSE (DMG_CRUSH | DMG_FALL | DMG_BLAST | DMG_SONIC | DMG_CLUB)
 
 // these are the damage types that have client hud art
-#define DMG_SHOWNHUD (DMG_POISON | DMG_ACID | DMG_FREEZE | DMG_SLOWFREEZE | DMG_DROWN | DMG_BURN | DMG_SLOWBURN | DMG_NERVEGAS | DMG_RADIATION | DMG_SHOCK)
+//modified by harSens
+//#define DMG_SHOWNHUD (DMG_POISON | DMG_ACID | DMG_FREEZE | DMG_SLOWFREEZE | DMG_DROWN | DMG_BURN | DMG_SLOWBURN | DMG_NERVEGAS | DMG_RADIATION | DMG_SHOCK)
+#define DMG_SHOWNHUD (DMG_POISON | DMG_ACID | DMG_FREEZE | DMG_DROWN | DMG_BURN | DMG_NERVEGAS | DMG_RADIATION | DMG_SHOCK)
 
 // NOTE: tweak these values based on gameplay feedback:
 
@@ -160,16 +177,29 @@ enum WeaponId
 #define itbd_SlowFreeze 7
 #define CDMG_TIMEBASED 8
 
+/* modified by harSens
 constexpr Vector VEC_HULL_MIN(-16, -16, -36);
 constexpr Vector VEC_HULL_MAX(16, 16, 36);
+*/
+constexpr Vector VEC_HULL_MIN(-16, -16, -17);
+constexpr Vector VEC_HULL_MAX(16, 16, 17);
 constexpr Vector VEC_HUMAN_HULL_MIN(-16, -16, 0);
 constexpr Vector VEC_HUMAN_HULL_MAX(16, 16, 72);
 constexpr Vector VEC_HUMAN_HULL_DUCK(16, 16, 36);
 
+/* modified by harSens
 constexpr Vector VEC_VIEW(0, 0, 28);
+*/
+constexpr Vector VEC_VIEW(0, 0, 10);
 
+/* modified by harSens
 constexpr Vector VEC_DUCK_HULL_MIN(-16, -16, -18);
 constexpr Vector VEC_DUCK_HULL_MAX(16, 16, 18);
 constexpr Vector VEC_DUCK_VIEW(0, 0, 12);
+*/
+constexpr Vector VEC_DUCK_HULL_MIN(-16, -16, -8);
+constexpr Vector VEC_DUCK_HULL_MAX(16, 16, 8);
+constexpr Vector VEC_DUCK_VIEW(0, 0, 8);
+
 
 constexpr Vector VEC_DEAD_VIEW(0, 0, -8);

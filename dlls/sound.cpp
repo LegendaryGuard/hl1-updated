@@ -26,6 +26,10 @@
 #include "pm_defs.h"
 #include "pm_materials.h"
 #include "pm_shared.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
 static char* memfgets(byte* pMemFile, int fileSize, int& filePos, char* pBuffer, int bufferSize);
 

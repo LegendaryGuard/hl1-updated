@@ -49,6 +49,24 @@ inline int gmsgSetFOV = 0;
 inline int gmsgShowMenu = 0;
 inline int gmsgGeigerRange = 0;
 inline int gmsgTeamNames = 0;
+//added by harSens
+inline int gmsgSpeed = 0;
+inline int gmsgChangeView = 0; 
+inline int gmsgVGUIMenu = 0;
+inline int gmsgCharge = 0;
+inline int gmsgMaxHealth = 0;
+inline int gmsgMaxKi = 0;
+inline int gmsgPowerLevel = 0;
+inline int gmsgMaxPowerLevel = 0;
+inline int gmsgExplosion = 0;
+inline int gmsgPowerStruggle = 0;
+inline int gmsgChargeSB = 0;
+inline int gmsgStopSBCharge = 0;
+inline int gmsgTeams = 0;
+inline int gmsgSensuBean = 0;
+inline int gmsgCreateTrail;
+inline int gmsgRemoveTrail;
+inline int gmsgAddPoint;
 
 inline int gmsgStatusText = 0;
 inline int gmsgStatusValue = 0;

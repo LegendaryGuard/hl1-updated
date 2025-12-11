@@ -160,6 +160,10 @@ public:
 	// Immediately end a multiplayer game
 	virtual void EndMultiplayerGame() {}
 
+	//added by harSens
+	virtual void UpdatePlayerStats() {}
+	int m_iAveragePowerLevel;
+
 protected:
 	CBasePlayerItem* FindNextBestWeapon(CBasePlayer* pPlayer, CBasePlayerItem* pCurrentWeapon);
 };
@@ -361,6 +365,10 @@ protected:
 	float m_flIntermissionEndTime = 0;
 	bool m_iEndIntermissionButtonHit;
 	void SendMOTDToClient(edict_t* client);
+
+	//added by harSens
+	int m_iAverageKi;
+	virtual void UpdatePlayerStats();
 };
 
 //=========================================================

@@ -681,6 +681,10 @@ void DLLEXPORT CL_CreateMove(float frametime, struct usercmd_s* cmd, int active)
 		cmd->upmove += cl_upspeed->value * CL_KeyState(&in_up);
 		cmd->upmove -= cl_upspeed->value * CL_KeyState(&in_down);
 
+		// moved here by harSens
+		// Allow mice and other controllers to add their inputs
+		IN_Move(frametime, cmd);
+
 		if ((in_klook.state & 1) == 0)
 		{
 			cmd->forwardmove += cl_forwardspeed->value * CL_KeyState(&in_forward);
@@ -697,7 +701,9 @@ void DLLEXPORT CL_CreateMove(float frametime, struct usercmd_s* cmd, int active)
 
 		// clip to maxspeed
 		spd = gEngfuncs.GetClientMaxspeed();
+		/*disabled by harSens: speed may be 0
 		if (spd != 0.0)
+		*/
 		{
 			// scale the 3 speeds so that the total velocity is not > cl.maxspeed
 			float fmov = sqrt((cmd->forwardmove * cmd->forwardmove) + (cmd->sidemove * cmd->sidemove) + (cmd->upmove * cmd->upmove));
@@ -711,8 +717,10 @@ void DLLEXPORT CL_CreateMove(float frametime, struct usercmd_s* cmd, int active)
 			}
 		}
 
+		/*moved upward by harSens
 		// Allow mice and other controllers to add their inputs
 		IN_Move(frametime, cmd);
+		*/
 	}
 
 	cmd->impulse = in_impulse;

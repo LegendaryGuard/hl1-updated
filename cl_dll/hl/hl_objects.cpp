@@ -26,8 +26,8 @@
 #include "entity_types.h"
 #include "r_efx.h"
 
-extern BEAM* pBeam;
-extern BEAM* pBeam2;
+BEAM* pBeam = NULL;
+BEAM* pBeam2 = NULL;
 void HUD_GetLastOrg(float* org);
 
 void UpdateBeams()

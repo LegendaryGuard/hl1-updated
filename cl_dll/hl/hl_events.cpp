@@ -32,6 +32,7 @@ That was what we were going to do, but we ran out of time...oh well.
 */
 void Game_HookEvents()
 {
+/*disabled by harSens
 	gEngfuncs.pfnHookEvent("events/glock1.sc", EV_FireGlock1);
 	gEngfuncs.pfnHookEvent("events/glock2.sc", EV_FireGlock2);
 	gEngfuncs.pfnHookEvent("events/shotgun1.sc", EV_FireShotGunSingle);
@@ -52,4 +53,5 @@ void Game_HookEvents()
 	gEngfuncs.pfnHookEvent("events/firehornet.sc", EV_HornetGunFire);
 	gEngfuncs.pfnHookEvent("events/tripfire.sc", EV_TripmineFire);
 	gEngfuncs.pfnHookEvent("events/snarkfire.sc", EV_SnarkFire);
+*/
 }

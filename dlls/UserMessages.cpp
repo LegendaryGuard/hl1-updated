@@ -58,8 +58,27 @@ void LinkUserMessages()
 	gmsgShowMenu = REG_USER_MSG("ShowMenu", -1);
 	gmsgShake = REG_USER_MSG("ScreenShake", sizeof(ScreenShake));
 	gmsgFade = REG_USER_MSG("ScreenFade", sizeof(ScreenFade));
-	gmsgAmmoX = REG_USER_MSG("AmmoX", 2);
+	//changed by harSens
+	//gmsgAmmoX = REG_USER_MSG("AmmoX", 2);
+	gmsgAmmoX = REG_USER_MSG("AmmoX", 5);
 	gmsgTeamNames = REG_USER_MSG("TeamNames", -1);
+	//added by harSens
+	gmsgSpeed = REG_USER_MSG("Speed", 2); 
+	gmsgVGUIMenu = REG_USER_MSG("VGUIMenu", 1);
+	gmsgChangeView = REG_USER_MSG("ChangeView", 2);
+	gmsgCharge = REG_USER_MSG("Charge", 1);
+	gmsgMaxHealth = REG_USER_MSG("MaxHealth", 1);
+	gmsgMaxKi = REG_USER_MSG("MaxKi", 4);
+	gmsgPowerLevel = REG_USER_MSG("PowerLevel", 4);	
+	gmsgMaxPowerLevel = REG_USER_MSG("MaxPL", 4);
+	gmsgExplosion = REG_USER_MSG("Explosion", 14);
+	gmsgPowerStruggle = REG_USER_MSG("PowerStrug",1);
+	gmsgChargeSB = REG_USER_MSG("ChargeSB",6);
+	gmsgStopSBCharge = REG_USER_MSG("StopChSB",0);
+	gmsgSensuBean = REG_USER_MSG("SensuBean", 1);
+	gmsgCreateTrail = REG_USER_MSG("CreateTrail", 13);
+	gmsgRemoveTrail = REG_USER_MSG("RemoveTrail", 4);
+	gmsgAddPoint = REG_USER_MSG("AddPoint", 10);
 
 	gmsgStatusText = REG_USER_MSG("StatusText", -1);
 	gmsgStatusValue = REG_USER_MSG("StatusValue", 3);

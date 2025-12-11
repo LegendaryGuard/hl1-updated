@@ -29,8 +29,15 @@
 #include "hltv.h"
 #include "trains.h"
 #include "UserMessages.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
+/*modified by harSens
 #define ITEM_RESPAWN_TIME 30
+*/
+#define ITEM_RESPAWN_TIME 120
 #define WEAPON_RESPAWN_TIME 20
 #define AMMO_RESPAWN_TIME 20
 
@@ -426,6 +433,9 @@ void CHalfLifeMultiplay::ClientDisconnected(edict_t* pClient)
 			}
 
 			pPlayer->RemoveAllItems(true); // destroy all of the players weapons and items
+
+			//added by harSens
+			UpdatePlayerStats();
 		}
 	}
 }
@@ -496,9 +506,43 @@ void CHalfLifeMultiplay::PlayerSpawn(CBasePlayer* pPlayer)
 
 	if (addDefault)
 	{
+		/*
 		pPlayer->GiveNamedItem("weapon_crowbar");
 		pPlayer->GiveNamedItem("weapon_9mmhandgun");
 		pPlayer->GiveAmmo(68, "9mm", _9MM_MAX_CARRY); // 4 full reloads
+		*/
+		//added by harSens: give player his attacks and ki
+		int	iMaxKi = pPlayer->m_pClass->GetStartKi();
+		int	iMaxPowerLevel = pPlayer->m_pClass->GetStartPowerLevel();
+		int	iMaxSpeed = pPlayer->m_pClass->GetStartSpeed();
+		int	iMaxHealth = pPlayer->m_pClass->GetStartHealth();				
+		
+		// move player stats to the average player stats
+		if (m_iAveragePowerLevel && m_iAverageKi)
+		{
+			iMaxKi = pPlayer->m_iMaxKi + (m_iAverageKi - pPlayer->m_iMaxKi) * 0.1;
+			iMaxPowerLevel = pPlayer->m_iMaxPowerLevel + (m_iAveragePowerLevel - pPlayer->m_iMaxPowerLevel) * 0.1;
+		}
+		
+
+		pPlayer->m_iMaxKi = iMaxKi;
+		pPlayer->GiveAmmo(iMaxKi, "ki", iMaxKi); //set max ki on respawn
+		pPlayer->m_pClass->AddAllMagic();
+		pPlayer->SetMaxKi(iMaxKi);
+
+		pPlayer->m_iMaxSpeed = iMaxSpeed;
+
+		pPlayer->m_iMaxHealth = iMaxHealth;
+		pPlayer->SetMaxHealth(iMaxHealth);
+		pPlayer->pev->health = iMaxHealth;
+
+		pPlayer->m_iPowerLevel = iMaxPowerLevel;
+		pPlayer->m_iMaxPowerLevel = iMaxPowerLevel;
+		pPlayer->SetMaxPowerLevel(iMaxPowerLevel);
+		pPlayer->m_iClientPowerLevel = -1; //force update on client	
+
+		UpdatePlayerStats();
+		//end harSens add
 	}
 
 	pPlayer->m_iAutoWepSwitch = originalAutoWepSwitch;
@@ -603,10 +647,14 @@ void CHalfLifeMultiplay::PlayerKilled(CBasePlayer* pVictim, entvars_t* pKiller, 
 		PK->m_flNextDecalTime = gpGlobals->time;
 	}
 
+	//added by harSens
+	UpdatePlayerStats();
+	/*disabled by harSens
 	if (pVictim->HasNamedPlayerItem("weapon_satchel"))
 	{
 		DeactivateSatchels(pVictim);
 	}
+	*/
 }
 
 //=========================================================
@@ -1631,6 +1679,43 @@ void CHalfLifeMultiplay::SendMOTDToClient(edict_t* client)
 
 	FREE_FILE(aFileList);
 }
+
+//added by harSens
+void CHalfLifeMultiplay::UpdatePlayerStats()
+{
+	int num = 0;
+	int total_pl = 0;
+	int total_ki = 0;
+
+	for (int i = 1; i <= gpGlobals->maxClients; i++)
+	{
+		CBaseEntity *pEnt = UTIL_PlayerByIndex(i);
+		if (pEnt)
+		{
+			if (pEnt->IsPlayer())
+			{
+				CBasePlayer *pPlayer = (CBasePlayer *)pEnt;
+				if (pPlayer->m_pClass->Classify() >= 0 && pPlayer->IsAlive())
+				{
+					num++;
+					total_pl += pPlayer->m_iMaxPowerLevel;
+					total_ki += pPlayer->m_iMaxKi;
+				}
+			}
+		}
+	}
+	if (num)
+	{
+		m_iAveragePowerLevel = total_pl / num;
+		m_iAverageKi = total_ki / num;
+	}
+	else
+	{
+		m_iAverageKi = 0;
+		m_iAveragePowerLevel = 0;
+	}
+}
+//end harSens add
 
 //=========================================================
 //=========================================================

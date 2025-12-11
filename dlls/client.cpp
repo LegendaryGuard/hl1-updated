@@ -48,9 +48,19 @@
 #include "pm_defs.h"
 #include "UserMessages.h"
 
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
+#include "shake.h"
+#include "teamplay_gamerules.h"
+
 DLL_GLOBAL unsigned int g_ulFrameCount;
 
 extern void CopyToBodyQue(entvars_t* pev);
+//added by harSens
+extern int gmsgVGUIMenu;
+extern int gmsgChangeView;
 
 void LinkUserMessages();
 
@@ -175,6 +185,10 @@ void ClientKill(edict_t* pEntity)
 	entvars_t* pev = &pEntity->v;
 
 	CBasePlayer* pl = (CBasePlayer*)CBasePlayer::Instance(pev);
+
+	//added by harSens: observers can't suicide
+	if ( pl->m_afPhysicsFlags & PFLAG_OBSERVER )
+		return;
 
 	if (pl->m_fNextSuicideTime > gpGlobals->time)
 		return; // prevent suiciding too ofter
@@ -525,6 +539,7 @@ void ClientCommand(edict_t* pEntity)
 	{
 		player->ForceClientDllUpdate();
 	}
+	/*removed by harSens:disable this louzy cheat
 	else if (FStrEq(pcmd, "give"))
 	{
 		if (0 != g_psv_cheats->value)
@@ -533,6 +548,7 @@ void ClientCommand(edict_t* pEntity)
 			player->GiveNamedItem(STRING(iszItem));
 		}
 	}
+	*/
 
 	else if (FStrEq(pcmd, "drop"))
 	{
@@ -591,6 +607,61 @@ void ClientCommand(edict_t* pEntity)
 		if (player->IsObserver())
 			player->Observer_FindNextPlayer(atoi(CMD_ARGV(1)) != 0);
 	}
+	//added by harSens: esf console commands
+	else if (FStrEq(pcmd, "teleport"))
+	{
+		GetClassPtr((CBasePlayer *)pev)->Teleport();
+	}	
+	else if (FStrEq(pcmd, "togglefly"))
+	{
+		CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);
+		if (!pPlayer->m_fFlying)
+			pPlayer->StartFly();
+		else
+			pPlayer->StopFly();
+	}
+	else if (FStrEq(pcmd, "turbo"))
+	{
+		CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);
+		if (!pPlayer->m_fTurbo)
+			pPlayer->StartTurbo();
+		else
+			pPlayer->StopTurbo();
+	}
+	else if (FStrEq(pcmd, "block"))
+	{
+		CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);
+		if (!pPlayer->m_fBlock)
+			pPlayer->StartBlock();
+		else
+			pPlayer->StopBlock();
+	}
+	else if (FStrEq(pcmd, "powerup"))
+	{
+		CBasePlayer *pPlayer = GetClassPtr((CBasePlayer *)pev);
+		if (!pPlayer->m_fPowerUp)
+			pPlayer->StartPowerUp();
+		else
+			pPlayer->StopPowerUp();
+	}
+	else if (FStrEq(pcmd,"change_class"))
+	{
+		GetClassPtr((CBasePlayer *)pev)->StartObserving();
+
+		//show class menu
+		MESSAGE_BEGIN(MSG_ONE, gmsgVGUIMenu, NULL, GetClassPtr((CBasePlayer *)pev)->edict());
+			WRITE_BYTE( 3 );
+		MESSAGE_END();
+	}
+	else if (FStrEq(pcmd,"change_team"))
+	{
+		extern int gmsgVGUIMenu;
+		MESSAGE_BEGIN(MSG_ONE, gmsgVGUIMenu, NULL, GetClassPtr((CBasePlayer *)pev)->edict());
+			WRITE_BYTE( 2 );	// This is the menu number that needs to be sent
+		MESSAGE_END();
+	}
+	else if (GetClassPtr((CBasePlayer *)pev)->ChangeClass(pcmd));
+	//end of harSens add
 	else if (g_pGameRules->ClientCommand(player, pcmd))
 	{
 		// MenuSelect returns true only if the command is properly handled,  so don't print a warning
@@ -1016,6 +1087,9 @@ void ClientPrecache()
 	PRECACHE_SOUND("player/pl_pain5.wav");
 	PRECACHE_SOUND("player/pl_pain6.wav");
 	PRECACHE_SOUND("player/pl_pain7.wav");
+
+	//added by harSens
+	PRECACHE_SOUND("weapons/teleport.wav");
 
 	PRECACHE_MODEL("models/player.mdl");
 
@@ -1868,7 +1942,7 @@ void UpdateClientData(const edict_t* ent, int sendweapons, struct clientdata_s* 
 	}
 
 
-
+/*disabled by harSens
 #if defined(CLIENT_WEAPONS)
 	if (0 != sendweapons)
 	{
@@ -1913,6 +1987,7 @@ void UpdateClientData(const edict_t* ent, int sendweapons, struct clientdata_s* 
 		}
 	}
 #endif
+*/
 }
 
 /*

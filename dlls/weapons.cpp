@@ -30,6 +30,10 @@
 #include "decals.h"
 #include "gamerules.h"
 #include "UserMessages.h"
+//added by harSens
+#include "effects.h"
+#include "aura.h"
+#include "classes.h"
 
 #define NOT_USED 255
 
@@ -267,6 +271,7 @@ void W_Precache()
 
 	// custom items...
 
+	/*disabled by harSens
 	// common world objects
 	UTIL_PrecacheOther("item_suit");
 	UTIL_PrecacheOther("item_battery");
@@ -328,6 +333,30 @@ void W_Precache()
 	{
 		UTIL_PrecacheOther("weaponbox"); // container for dropped deathmatch weapons
 	}
+	*/
+
+	//added by harSens
+	UTIL_PrecacheOtherWeapon( "weapon_melee" );
+	UTIL_PrecacheOtherWeapon( "weapon_kiblast" );
+	UTIL_PrecacheOtherWeapon( "weapon_destructodisc" );
+	UTIL_PrecacheOtherWeapon( "weapon_gallitgun" );
+	UTIL_PrecacheOtherWeapon( "weapon_kamehameha" );
+	UTIL_PrecacheOtherWeapon( "weapon_solarflare" );
+	UTIL_PrecacheOtherWeapon( "weapon_eyelaser" );
+	UTIL_PrecacheOtherWeapon( "weapon_fingerlaser" );
+	UTIL_PrecacheOtherWeapon( "weapon_friezadisc" );
+	UTIL_PrecacheOtherWeapon( "weapon_specialbeamcannon");
+	UTIL_PrecacheOtherWeapon( "weapon_spiritbomb");
+	UTIL_PrecacheOtherWeapon( "weapon_bigbang");
+	UTIL_PrecacheOtherWeapon( "weapon_finalflash");
+	UTIL_PrecacheOtherWeapon( "weapon_masenko");
+	UTIL_PrecacheOtherWeapon( "weapon_deathball");
+	UTIL_PrecacheOtherWeapon( "weapon_burningattack");
+	UTIL_PrecacheOtherWeapon( "weapon_sensu");
+	UTIL_PrecacheOther("aura");
+	UTIL_PrecacheOther("magicattack");
+	UTIL_PrecacheOther("dragonball");
+	UTIL_PrecacheOther("item_sensubeanbag");
 
 	g_sModelIndexFireball = PRECACHE_MODEL("sprites/zerogxplode.spr");	// fireball
 	g_sModelIndexWExplosion = PRECACHE_MODEL("sprites/WXplo1.spr");		// underwater fireball
@@ -831,6 +860,27 @@ bool CBasePlayerWeapon::IsUseable()
 	// clip is empty (or nonexistant) and the player has no more ammo of this type.
 	return CanDeploy();
 }
+
+//added by harSens for weapons without the models, nor deploy animations
+bool CBasePlayerWeapon::DefaultDeploy(char *szAnimExt)
+{
+	if (!CanDeploy())
+		return false;
+
+	strcpy(m_pPlayer->m_szAnimExtention, szAnimExt);
+	m_pPlayer->m_flNextAttack = UTIL_WeaponTimeBase() + 0.5;
+	m_flTimeWeaponIdle = UTIL_WeaponTimeBase() + 1.0;
+	return true;
+}
+
+float CBasePlayerWeapon::GetPowerRatio()
+{
+	if (g_pGameRules->m_iAveragePowerLevel)
+		return (float)m_pPlayer->GetPowerLevel() / (float)g_pGameRules->m_iAveragePowerLevel;
+
+	return 0;
+}
+//end harSens add
 
 bool CBasePlayerWeapon::DefaultDeploy(const char* szViewModel, const char* szWeaponModel, int iAnim, const char* szAnimExt, int body)
 {
@@ -1400,7 +1450,7 @@ void CBasePlayerWeapon::PrintState()
 	ALERT(at_console, "m_iclip:  %i\n", m_iClip);
 }
 
-
+/*disabled by harSens
 TYPEDESCRIPTION CRpg::m_SaveData[] =
 	{
 		DEFINE_FIELD(CRpg, m_fSpotActive, FIELD_BOOLEAN),
@@ -1459,3 +1509,4 @@ TYPEDESCRIPTION CSatchel::m_SaveData[] =
 		DEFINE_FIELD(CSatchel, m_chargeReady, FIELD_INTEGER),
 };
 IMPLEMENT_SAVERESTORE(CSatchel, CBasePlayerWeapon);
+*/

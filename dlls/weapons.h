@@ -18,9 +18,15 @@
 #include "effects.h"
 #include "weaponinfo.h"
 
+/*
+highly modified by harSens 
+*/
+
 class CBasePlayer;
 class CBasePlayerWeapon;
+extern int gmsgWeapPickup;
 
+/*disabled by harSens
 void DeactivateSatchels(CBasePlayer* pOwner);
 
 // Contact Grenade / Timed grenade / Satchel Charge
@@ -66,91 +72,133 @@ public:
 #define ITEM_ANTIDOTE 2
 #define ITEM_SECURITY 3
 #define ITEM_BATTERY 4
+*/
 
 #define MAX_NORMAL_BATTERY 100
 
+#define WEAPON_NONE				 0
+#define WEAPON_MELEE			 1
+#define WEAPON_KIBLAST			 2	
+#define WEAPON_GALLITGUN		 3
+#define WEAPON_KAMEHAMEHA		 4
+#define	WEAPON_DESTRUCTODISC	 5
+#define WEAPON_SOLARFLARE		 6
+#define WEAPON_EYELASER			 7
+#define WEAPON_FRIEZADISC		 8
+#define WEAPON_SPECIALBEAMCANNON 9
+#define WEAPON_SPIRITBOMB		10
+#define WEAPON_BIGBANG			11
+#define WEAPON_FINGERLASER		12
+#define WEAPON_FINALFLASH		13
+#define	WEAPON_MASENKO			14
+#define WEAPON_DEATHBALL		15
+#define WEAPON_BURNINGATTACK	16
+#define WEAPON_SENSUBEAN		17
+
 
 // weapon weight factors (for auto-switching)   (-1 = noswitch)
-#define CROWBAR_WEIGHT 0
-#define GLOCK_WEIGHT 10
-#define PYTHON_WEIGHT 15
-#define MP5_WEIGHT 15
-#define SHOTGUN_WEIGHT 15
-#define CROSSBOW_WEIGHT 10
-#define RPG_WEIGHT 20
-#define GAUSS_WEIGHT 20
-#define EGON_WEIGHT 20
-#define HORNETGUN_WEIGHT 15
-#define HANDGRENADE_WEIGHT 5
-#define SNARK_WEIGHT 5
-#define SATCHEL_WEIGHT -10
-#define TRIPMINE_WEIGHT -10
+#define MELEE_WEIGHT				25
+#define KIBLAST_WEIGHT				25
+#define GALLITGUN_WEIGHT			15
+#define KAMEHAMEHA_WEIGHT			15
+#define SPECIALBEAMCANNON_WEIGHT		15
+#define FINGERLASER_WEIGHT			15
+#define BIGBANG_WEIGHT				10
+#define DESTRUCTODISC_WEIGHT			10	
+#define EYELASER_WEIGHT				20
+#define MASENKO_WEIGHT				 5
+#define SPIRITBOMB_WEIGHT			 5
+#define DEATHBALL_WEIGHT			 5
+#define FINALFLASH_WEIGHT			 5 
+#define BURNINGATTACK_WEIGHT		 	 5
+#define FRIEZADISC_WEIGHT			-1
+#define SOLARFLARE_WEIGHT			-1
+#define SENSUBEAN_WEIGHT			-1
 
+#define CHARGETIME				0.20
+// weapon max charge times * CHARGETIME seconds
+#define SPECIALBEAMCANNON_MAXCHARGETIME	        21
+#define SOLARFLARE_MAXCHARGETIME		21
+#define KAMEHAMEHA_MAXCHARGETIME		30
+#define GALLITGUN_MAXCHARGETIME			24
+#define BIGBANG_MAXCHARGETIME			30
+#define MASENKO_MAXCHARGETIME			24
+#define FINALFLASH_MAXCHARGETIME		41
+#define BURNINGATTACK_MAXCHARGETIME		12
+#define FINGERLASER_MAXCHARGETIME		15
+#define SPIRITBOMB_MAXCHARGETIME		90
+#define DEATHBALL_MAXCHARGETIME			45
 
-// weapon clip/carry ammo capacities
-#define URANIUM_MAX_CARRY 100
-#define _9MM_MAX_CARRY 250
-#define _357_MAX_CARRY 36
-#define BUCKSHOT_MAX_CARRY 125
-#define BOLT_MAX_CARRY 50
-#define ROCKET_MAX_CARRY 5
-#define HANDGRENADE_MAX_CARRY 10
-#define SATCHEL_MAX_CARRY 5
-#define TRIPMINE_MAX_CARRY 5
-#define SNARK_MAX_CARRY 15
-#define HORNET_MAX_CARRY 8
-#define M203_GRENADE_MAX_CARRY 10
+//max weapon sprite sizes
+#define BIGBANGATTACK_SIZE			 80
+#define GUIDEDATTACK_SIZE		    128
+#define SPIRITBOMB_SIZE				256
+#define DEATHBALL_SIZE				256
 
 // the maximum amount of ammo each weapon's clip can hold
 #define WEAPON_NOCLIP -1
 
-//#define CROWBAR_MAX_CLIP		WEAPON_NOCLIP
-#define GLOCK_MAX_CLIP 17
-#define PYTHON_MAX_CLIP 6
-#define MP5_MAX_CLIP 50
-#define MP5_DEFAULT_AMMO 25
-#define SHOTGUN_MAX_CLIP 8
-#define CROSSBOW_MAX_CLIP 5
-#define RPG_MAX_CLIP 1
-#define GAUSS_MAX_CLIP WEAPON_NOCLIP
-#define EGON_MAX_CLIP WEAPON_NOCLIP
-#define HORNETGUN_MAX_CLIP WEAPON_NOCLIP
-#define HANDGRENADE_MAX_CLIP WEAPON_NOCLIP
-#define SATCHEL_MAX_CLIP WEAPON_NOCLIP
-#define TRIPMINE_MAX_CLIP WEAPON_NOCLIP
-#define SNARK_MAX_CLIP WEAPON_NOCLIP
+//Ki cost for the magic weapons
+#define MELEE_KI_COST				 2500
+#define KIBLAST_KI_COST				15000
+#define GALLITGUN_KI_COST			11000
+#define KAMEHAMEHA_KI_COST			10000
+#define FINALFLASH_KI_COST			20000
+#define MASENKO_KI_COST				 5000
+#define SPECIALBEAMCANNON_KI_COST	10000
+#define FINGERLASER_KI_COST			10000
+#define DESTRUCTODISC_KI_COST		50000
+#define FRIEZADISC_KI_COST			50000
+#define SOLARFLARE_KI_COST			 5000
+#define EYELASER_KI_COST			 5000
+#define SPIRITBOMB_KI_COST			    0
+#define DEATHBALL_KI_COST			 8000
+#define BIGBANG_KI_COST				15000
+#define BURNINGATTACK_KI_COST		 3500
 
+//weapon speeds
+#define GALLITGUN_SPEED				1300
+#define KAMEHAMEHA_SPEED			1300
+#define MASENKO_SPEED				1500
+#define FINALFLASH_SPEED			1000
+#define BIGBANG_SPEED				1900
+#define SPIRITBOMB_SPEED			1000
+#define DEATHBALL_SPEED				1900
+#define BURNINGATTACK_SPEED			2000
+#define SPECIALBEAMCANNON_SPEED		2000
+#define DESTRUCTODISC_SPEED			 800
+#define FRIEZADISC_SPEED			1000
+#define KIBLAST_SPEED				2000
+#define SENSU_SPEED					 500
 
-// the default amount of ammo that comes with each gun when it spawns
-#define GLOCK_DEFAULT_GIVE 17
-#define PYTHON_DEFAULT_GIVE 6
-#define MP5_DEFAULT_GIVE 25
-#define MP5_DEFAULT_AMMO 25
-#define MP5_M203_DEFAULT_GIVE 0
-#define SHOTGUN_DEFAULT_GIVE 12
-#define CROSSBOW_DEFAULT_GIVE 5
-#define RPG_DEFAULT_GIVE 1
-#define GAUSS_DEFAULT_GIVE 20
-#define EGON_DEFAULT_GIVE 20
-#define HANDGRENADE_DEFAULT_GIVE 5
-#define SATCHEL_DEFAULT_GIVE 1
-#define TRIPMINE_DEFAULT_GIVE 1
-#define SNARK_DEFAULT_GIVE 5
-#define HIVEHAND_DEFAULT_GIVE 8
+//weapon damage
+#define EYELASER_DAMAGE				4
+#define KIBLAST_DAMAGE				5
+#define KICK_DAMAGE					8
+#define PUNCH_DAMAGE				6
 
-// The amount of ammo given to a player by an ammo item.
-#define AMMO_URANIUMBOX_GIVE 20
-#define AMMO_GLOCKCLIP_GIVE GLOCK_MAX_CLIP
-#define AMMO_357BOX_GIVE PYTHON_MAX_CLIP
-#define AMMO_MP5CLIP_GIVE MP5_MAX_CLIP
-#define AMMO_CHAINBOX_GIVE 200
-#define AMMO_M203BOX_GIVE 2
-#define AMMO_BUCKSHOTBOX_GIVE 12
-#define AMMO_CROSSBOWCLIP_GIVE CROSSBOW_MAX_CLIP
-#define AMMO_RPGCLIP_GIVE RPG_MAX_CLIP
-#define AMMO_URANIUMBOX_GIVE 20
-#define AMMO_SNARKBOX_GIVE 5
+//damages per chargepoint
+#define KAMEHAMEHA_DAMAGE			3
+#define GALLITGUN_DAMAGE			3
+#define MASENKO_DAMAGE				3
+#define SPECIALBEAMCANNON_DAMAGE	5 //'cause of shorter chargetime
+#define FINGERLASER_DAMAGE			3
+#define BIGBANG_DAMAGE				4
+#define FINALFLASH_DAMAGE			4
+#define BURNINGATTACK_DAMAGE		3
+#define SPIRITBOMB_DAMAGE			2
+#define DEATHBALL_DAMAGE			3
 
+#define KAMEHAMEHA_RADIUS			5
+#define GALLITGUN_RADIUS			4
+#define MASENKO_RADIUS				3
+#define SPECIALBEAMCANNON_RADIUS	4 
+#define FINGERLASER_RADIUS			2
+#define BIGBANG_RADIUS				6
+#define FINALFLASH_RADIUS			5
+#define BURNINGATTACK_RADIUS		3
+#define SPIRITBOMB_RADIUS			3
+#define DEATHBALL_RADIUS			3
 // bullet types
 typedef enum
 {
@@ -200,6 +248,218 @@ struct AmmoInfo
 	*	@brief For exhaustible weapons. If provided, and the player does not have this weapon in their inventory yet it will be given to them.
 	*/
 	const char* WeaponName = nullptr;
+};
+
+
+/**
+* Class wich handles magic attacks
+* @version 13-4-2001
+* @author Herwin 'harSens' van Welbergen
+*/
+class CMagicAttack : public CBaseMonster
+{
+public:
+	/**
+	* MagicAttack init
+	*/
+	void Spawn() override;
+	
+	/**
+	* Precache stuff
+	*/
+	void Precache() override;
+
+	/**
+	* Removes magicattack
+	*/
+	void Remove(void);
+
+	/**
+	* Grows a spirit bomb (or other attack)
+	*/
+	void Grow(void);
+
+	/**
+	* Create magical attack Destructo Disc
+	* @param entvars_t *pevOwner: Monster/Player who shoots it
+	* @param Vector vecStart: Origin vector of the destructodisc
+	* @param Vector vecVelocity: Velocity of the destructodisc
+	* @return *CMagicAttack: The created MagicAttack 
+	*/
+	static CMagicAttack *ShootDestructoDisc(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity);
+
+	/**
+	* Create a guided magical attack 
+	* @param entvars_t *pevOwner: Monster/Player who shoots it
+	* @param Vector vecStart: Origin vector of the attack
+	* @param Vector vecVelocity: Velocity of the attack
+	* @param int damage: Amount of damage the attack does
+	* @param char *attack: Name of the attack
+	* @param float size: relative size of the attack (0..1)
+	* @param int beamsprite: the sprite for the beam
+	* @param int beamsprite: the radius for the beam
+	* @return *CMagicAttack: The created MagicAttack 
+	*/
+	static CMagicAttack *ShootGuidedMagic(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, int damage, char *attack, float size, int r, int g, int b, short trail, int radius);
+	
+	/**
+	* Create a wave attack 
+	* @param entvars_t *pevOwner: Monster/Player who shoots it
+	* @param Vector vecStart: Origin vector of the attack
+	* @param Vector vecVelocity: Velocity of the attack
+	* @param int damage: the amount of damage the attack does
+	* @param char *attack: Name of the attack
+	* @param int beamsprite: the sprite for the beam
+	* @return *CMagicAttack: The created MagicAttack 
+	*/
+	static CMagicAttack *ShootWave(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, int damage, char *attack, int r, int g, int b, short trail, int radius);
+	
+	/**
+	* Create a kiblast attack 
+	* @param entvars_t *pevOwner: Monster/Player who shoots it
+	* @param Vector vecStart: Origin vector of the attack
+	* @param Vector vecVelocity: Velocity of the attack
+	* @param damage: the amount of damage to be done
+	*/
+	static CMagicAttack *ShootKiBlast(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, int damage);
+	
+	/**
+	* Create a bigbang attack 
+	* @param entvars_t *pevOwner: Monster/Player who shoots it
+	* @param Vector vecStart: Origin vector of the attack
+	* @param Vector vecVelocity: Velocity of the attack
+	* @param damage: the amount of damage to be done
+	* @param size: the size of the bigbang sprite
+	*/
+	static CMagicAttack *ShootBigBang(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity, int damage, float size);
+	
+	/**
+	* Create magical attack Frieza Disc
+	* @param entvars_t *pevOwner: Monster/Player who shoots it
+	* @param Vector vecStart: Origin vector of the friezadisc
+	* @param Vector vecVelocity: Velocity of the friezadisc
+	* @return *CMagicAttack: The created MagicAttack 
+	*/
+	static CMagicAttack *ShootFriezaDisc(entvars_t *pevOwner, Vector vecStart, Vector vecVelocity);
+
+	/**
+	* Create magical attack OrbitBall
+	* @param entvars_t *pevOwner: Target to orbit around
+	* @param Vector vecStart: Origin vector of the orbitball
+	* @param Vector vecVelocity: Velocity of the orbitball
+	* @return *CMagicAttack: The created MagicAttack 
+	*/
+	static CMagicAttack *ShootOrbitBall(entvars_t *pevAimEnt, entvars_t *pevOwner, Vector vecStart, Vector vecVelocity , int damage, int r, int g, int b, short trail, int radius);
+
+	/**
+	* Create magical attack spirit bomb
+	* @param entvars_t *pevOwner: monster/player who shoots it
+	* @param Vector vecStart: Origin vector of the spirit bomb
+	* @return *CMagicAttack: The created MagicAttack 
+	*/
+	static CMagicAttack *CreateSpiritBomb(entvars_t *pevOwner, Vector vecStart);
+
+	
+	/**
+	* Shoots the spiritbomb
+	* @param Vector vecVelocity: velocity of the spiritbomb
+	* @param int damage: damage of the spiritbomb
+	*/
+	void ShootSpiritBomb(Vector vecVelocity, int damage);
+
+	/**
+	* Shoots the deathball
+	* @param entvars_t *pevOwner: monster/player who shoots it	
+	* @param Vector vecVelocity: velocity of the spiritbomb
+	* @param int damage: damage of the spiritbomb
+	* @param float size: the size of the deathball
+	* @return *CMagicAttack: The created MagicAttack 
+	*/
+	static CMagicAttack *ShootDeathBall(entvars_t *pevOwner,Vector vecSrc, Vector vecVelocity, int damage, float size);
+
+	/**
+	* Gets called whenever the MagicAttack hits another entity
+	* @param CBaseEntity pOther: the entity wich is hit
+	*/
+	void EXPORT HitTouch(CBaseEntity *pOther);
+
+	/**
+	* Gets called whenever the MagicAttack hits another entity 
+	* and creates a bubble on the place of the hit.
+	* @param CBaseEntity pOther: the entity wich is hit
+	*/
+	void EXPORT BubbleTouch(CBaseEntity *pOther);
+
+	/**
+	* Used for magics that explode on touch
+	* @param CBaseEntity pOther: the entity wich is hit
+	*/
+	void EXPORT ExplodeTouch(CBaseEntity *pOther);
+	
+	/**
+	* Called when magic is in air. 
+	* Removes magic when off-map and emits magic sound.
+	*/
+	void EXPORT NormalThink(void);
+
+	/**
+	* Called for magics wich follow the crosshair
+	*/
+	void EXPORT FollowThink(void);
+
+	/**
+	* Called for magics wich explode in bubbles
+	*/
+	void EXPORT BubbleThink(void);
+
+	/**
+	* Randomly rotates the roll of magic, used for destructodisc
+	*/
+	void EXPORT RandomRotateThink(void);
+
+	/**
+	* Boomerangs the magic back to the player, used for friezadisc
+	*/
+	void EXPORT HomeThink(void);
+
+	/**
+	* Orbits around another magicattack, used for special beam cannon
+	*/
+	void EXPORT OrbitThink(void);
+
+	/**
+	* Struggles for power with another magic attack
+	*/
+	void EXPORT PowerStruggleThink(void);
+
+	/**
+	* Magics don't bleed
+	*/
+	virtual int	BloodColor(void) { return DONT_BLEED; }
+	
+	/**
+	* explodes 
+	*/
+	void Explode();
+
+	int m_fPowerStruggle;
+	float m_flStruggleRatio;
+private:
+	/**
+	* adds a trail to the attack
+	* @param int life: how long the trail stays on
+	* @param int width: the width of the trail
+	*/
+	void AddTrail(int life, int width, short sprite);
+
+	CBaseEntity *m_pPreviousHit;
+	unsigned char m_cColor[4];
+
+	float m_flSpeed;			//speed of the magic
+	int m_iRadius;				//the radius for exploding attacks
+	bool m_fTrail;				//magic has a trail?
+	CBaseEntity *m_pStruggler;	//the one to struggle against
+	short m_sRockGibs;
 };
 
 inline int giAmmoIndex = 0;
@@ -321,6 +581,20 @@ public:
 	virtual bool IsUseable();
 	bool DefaultDeploy(const char* szViewModel, const char* szWeaponModel, int iAnim, const char* szAnimExt, int body = 0);
 	bool DefaultReload(int iClipSize, int iAnim, float fDelay, int body = 0);
+
+	//added by harSens
+	/**
+	* Deploys a no-model weapon 
+	* @param char *szAnimExt:The name of the animation extender in the models
+	*/
+	bool DefaultDeploy(char *szAnimExt);
+
+	/**
+	* Gets the powerratio for the player
+	* @returns float: the power ratio
+	*/
+	float GetPowerRatio();
+	//end harSens add
 
 	void ItemPostFrame() override; // called each frame by the player PostThink
 	// called by CBasePlayerWeapons ItemPostFrame()
@@ -476,6 +750,7 @@ bool bIsMultiplayer();
 void LoadVModel(const char* szViewModel, CBasePlayer* m_pPlayer);
 #endif
 
+/*disabled by harSens
 enum glock_e
 {
 	GLOCK_IDLE1 = 0,
@@ -1225,3 +1500,4 @@ public:
 private:
 	unsigned short m_usSnarkFire;
 };
+*/

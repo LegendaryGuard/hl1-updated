@@ -29,6 +29,7 @@ This file contains "stubs" of class member implementations so that we can predic
 #include "nodes.h"
 #include "soundent.h"
 #include "skill.h"
+#include "effects.h"
 
 void EMIT_SOUND_DYN(edict_t* entity, int channel, const char* sample, float volume, float attenuation, int flags, int pitch) {}
 
@@ -83,6 +84,7 @@ void CBaseToggle::PlayScriptedSentence(const char* pszSentence, float duration, 
 void CBaseToggle::SentenceStop() {}
 
 // CGrenade Stubs
+/*removed by harSens
 void CGrenade::BounceSound() {}
 void CGrenade::Explode(Vector, Vector) {}
 void CGrenade::Explode(TraceResult*, int) {}
@@ -91,6 +93,7 @@ void CGrenade::Spawn() {}
 CGrenade* CGrenade::ShootTimed(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity, float time) { return 0; }
 CGrenade* CGrenade::ShootContact(entvars_t* pevOwner, Vector vecStart, Vector vecVelocity) { return 0; }
 void CGrenade::DetonateUse(CBaseEntity* pActivator, CBaseEntity* pCaller, USE_TYPE useType, float value) {}
+*/
 
 void UTIL_Remove(CBaseEntity* pEntity) {}
 void UTIL_SetSize(entvars_t* pev, const Vector& vecMin, const Vector& vecMax) {}
